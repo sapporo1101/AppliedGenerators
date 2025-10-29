@@ -7,6 +7,7 @@ import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.recipe.GenesisSynthesizerRecipe;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
+import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
@@ -54,6 +55,7 @@ public class JEIPlugin implements IModPlugin {
     @Override
     public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
         registration.addRecipeCatalyst(AGSingletons.GENESIS_SYNTHESIZER, JEIGenesisSynthesizerCategory.RECIPE_TYPE);
+        registration.addRecipeCatalyst(AGSingletons.SMELTER, RecipeTypes.SMELTING);
     }
 
     public static Ingredient stackOf(IngredientStack.Item stack) {

@@ -5,6 +5,7 @@ import dev.emi.emi.api.EmiEntrypoint;
 import dev.emi.emi.api.EmiPlugin;
 import dev.emi.emi.api.EmiRegistry;
 import dev.emi.emi.api.recipe.EmiRecipe;
+import dev.emi.emi.api.recipe.VanillaEmiRecipeCategories;
 import dev.emi.emi.api.stack.EmiIngredient;
 import dev.emi.emi.api.stack.EmiStack;
 import io.github.sapporo1101.appgen.common.AGSingletons;
@@ -27,6 +28,7 @@ public class EMIPlugin implements EmiPlugin {
     public void register(EmiRegistry registry) {
         registry.addCategory(EMIGenesisSynthesizerRecipe.CATEGORY);
         registry.addWorkstation(EMIGenesisSynthesizerRecipe.CATEGORY, EmiStack.of(AGSingletons.GENESIS_SYNTHESIZER));
+        registry.addWorkstation(VanillaEmiRecipeCategories.SMELTING, EmiStack.of(AGSingletons.SMELTER));
         adaptRecipeType(registry, GenesisSynthesizerRecipe.TYPE, EMIGenesisSynthesizerRecipe::new);
     }
 

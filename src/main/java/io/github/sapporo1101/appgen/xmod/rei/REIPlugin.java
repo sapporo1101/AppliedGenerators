@@ -13,6 +13,7 @@ import me.shedaniel.rei.api.common.entry.EntryIngredient;
 import me.shedaniel.rei.api.common.entry.EntryStack;
 import me.shedaniel.rei.api.common.util.EntryStacks;
 import me.shedaniel.rei.forge.REIPluginClient;
+import me.shedaniel.rei.plugin.common.BuiltinPlugin;
 
 @REIPluginClient
 public class REIPlugin implements REIClientPlugin {
@@ -37,6 +38,7 @@ public class REIPlugin implements REIClientPlugin {
         }
         registry.add(new REIGenesisSynthesizerCategory());
         registry.addWorkstations(REIGenesisSynthesizerDisplay.ID, EntryStacks.of(AGSingletons.GENESIS_SYNTHESIZER));
+        registry.addWorkstations(BuiltinPlugin.SMELTING, EntryStacks.of(AGSingletons.SMELTER));
     }
 
     public static EntryIngredient stackOf(IngredientStack.Item stack) {
