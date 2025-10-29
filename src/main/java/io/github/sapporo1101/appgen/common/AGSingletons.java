@@ -7,6 +7,7 @@ import io.github.sapporo1101.appgen.common.blockentities.*;
 import io.github.sapporo1101.appgen.common.blocks.*;
 import io.github.sapporo1101.appgen.common.blocks.networking.FluxCellBlockItem;
 import io.github.sapporo1101.appgen.common.items.CommonItem;
+import io.github.sapporo1101.appgen.common.items.StackSmeltingCardItem;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.Item;
@@ -70,6 +71,7 @@ public class AGSingletons {
     public static CommonItem COMPONENT_16M;
     public static CommonItem COMPONENT_64M;
     public static CommonItem COMPONENT_256M;
+    public static StackSmeltingCardItem STACK_SMELTING_CARD;
 
     public static DataComponentType<CompoundTag> EXTRA_SETTING;
 
@@ -129,6 +131,7 @@ public class AGSingletons {
         COMPONENT_16M = new CommonItem();
         COMPONENT_64M = new CommonItem();
         COMPONENT_256M = new CommonItem();
+        STACK_SMELTING_CARD = new StackSmeltingCardItem();
 
         EXTRA_SETTING = GlodUtil.getComponentType(CompoundTag.CODEC, GlodCodecs.NBT_STREAM_CODEC);
 
@@ -187,6 +190,7 @@ public class AGSingletons {
         regHandler.item("generating_component_16m", COMPONENT_16M);
         regHandler.item("generating_component_64m", COMPONENT_64M);
         regHandler.item("generating_component_256m", COMPONENT_256M);
+        regHandler.item("stack_smelting_card", STACK_SMELTING_CARD);
 
         regHandler.comp("extra_setting", EXTRA_SETTING);
     }

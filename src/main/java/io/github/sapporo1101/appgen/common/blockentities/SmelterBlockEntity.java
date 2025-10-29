@@ -275,22 +275,36 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
     }
 
     private static boolean smelt(RegistryAccess registryAccess, @javax.annotation.Nullable RecipeHolder<?> recipe, ItemStack inputStack, ItemStack outputStack, SmelterBlockEntity smelter) {
-        System.out.print("Smelter: smelt action for " + inputStack + " -> " + recipe + ": ");
+        System.out.println("Smelter: smelt action for " + inputStack + " -> " + recipe + ": ");
         if (recipe != null && canSmelt(registryAccess, recipe, inputStack, outputStack, smelter)) {
             ItemStack resultStack = ((AbstractCookingRecipe) recipe.value()).assemble(new SingleRecipeInput(inputStack), registryAccess);
+            int smeltingCount = smelter.isUpgradedWith(AGSingletons.STACK_SMELTING_CARD) ? getMaxSmeltingCount(inputStack, outputStack, resultStack) : 1;
+            if (smeltingCount <= 0 || smeltingCount > inputStack.getCount()) return false;
             if (outputStack.isEmpty()) {
+                resultStack.setCount(Math.min(resultStack.getCount() * smeltingCount, Math.min(resultStack.getMaxStackSize(), STACK_SIZE)));
                 smelter.outputInv.setItemDirect(0, resultStack.copy());
             } else if (ItemStack.isSameItemSameComponents(outputStack, resultStack)) {
-                outputStack.grow(resultStack.getCount());
+                outputStack.grow(Math.min(resultStack.getCount() * smeltingCount, Math.min(outputStack.getMaxStackSize(), STACK_SIZE) - outputStack.getCount()));
                 smelter.outputInv.setItemDirect(0, outputStack);
+            } else {
+                return false;
             }
-            inputStack.shrink(1);
+            inputStack.shrink(smeltingCount);
+            System.out.println("Smelter: smelted " + smeltingCount + " items.");
             smelter.inputInv.setItemDirect(0, inputStack);
-            System.out.println("true");
             return true;
         } else {
-            System.out.println("false");
             return false;
+        }
+    }
+
+    private static int getMaxSmeltingCount(ItemStack inputStack, ItemStack outputStack, ItemStack resultStack) {
+        if (outputStack.isEmpty()) {
+            return Math.min(inputStack.getCount(), Math.min(resultStack.getMaxStackSize(), STACK_SIZE) / resultStack.getCount());
+        } else if (ItemStack.isSameItemSameComponents(outputStack, resultStack)) {
+            return Math.min(inputStack.getCount(), (Math.min(outputStack.getMaxStackSize(), STACK_SIZE) - outputStack.getCount()) / resultStack.getCount());
+        } else {
+            return 0;
         }
     }
 
@@ -359,7 +373,7 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
     }
 
     private static int getAePerOperation(Level level, SmelterBlockEntity smelter) {
-        return AE_PER_TICK * getMaxProgress(level, smelter);
+        return (smelter.isUpgradedWith(AGSingletons.STACK_SMELTING_CARD) ? 64 : 1) * AE_PER_TICK * getMaxProgress(level, smelter);
     }
 
     @Override

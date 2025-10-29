@@ -687,6 +687,13 @@ public class AGRecipeProvider extends RecipeProvider {
                 .input(AEItems.CERTUS_QUARTZ_CRYSTAL, 2)
                 .fluid(Fluids.WATER, 100)
                 .save(recipeOutput, AppliedGenerators.id("synthesizer/cable_anchor"));
+        // Stack Smelting Card
+        GenesisSynthesizerRecipeBuilder.synthesize(AGSingletons.STACK_SMELTING_CARD, 1, 500000)
+                .input(AGSingletons.EMBER_CRYSTAL_CHARGED, 200)
+                .input(AEItems.ADVANCED_CARD)
+                .input(Items.NETHERITE_BLOCK)
+                .fluid(Fluids.LAVA, 5000)
+                .save(recipeOutput, AppliedGenerators.id("synthesizer/stack_smelting_card"));
 
 
         // World Transformation Recipes

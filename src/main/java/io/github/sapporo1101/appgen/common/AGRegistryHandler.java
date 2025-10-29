@@ -188,5 +188,6 @@ public class AGRegistryHandler extends RegistryHandler {
         Upgrades.add(AEItems.SPEED_CARD, AGSingletons.FLUX_GENERATOR_256M, 3, "upgrade.appgen.flux_generator");
         Upgrades.add(AEItems.REDSTONE_CARD, AGSingletons.FLUX_GENERATOR_256M, 1, "upgrade.appgen.flux_generator");
         Upgrades.add(AEItems.SPEED_CARD, AGSingletons.SMELTER, 4);
+        Upgrades.add(AGSingletons.STACK_SMELTING_CARD, AGSingletons.SMELTER, 1);
     }
 }

@@ -54,6 +54,7 @@
     "item.appgen.generating_component_16m": "16M ME Energy Generating Component",
     "item.appgen.generating_component_64m": "64M ME Energy Generating Component",
     "item.appgen.generating_component_256m": "256M ME Energy Generating Component",
+    "item.appgen.stack_smelting_card": "Stack Smelting Card",
     "gui.appgen.flux_cell": "Flux Cell",
     "gui.appgen.pattern_buffer": "Pattern Buffer",
     "gui.appgen.singularity_generator": "Singularity Generator",
