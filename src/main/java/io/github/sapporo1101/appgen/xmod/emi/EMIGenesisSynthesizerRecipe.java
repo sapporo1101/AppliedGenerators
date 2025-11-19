@@ -52,12 +52,11 @@ public class EMIGenesisSynthesizerRecipe extends BasicEmiRecipe {
         widgets.addTexture(fe, energyLabelX - 16, energyLabelY - 8, 10, 12, 0, 0, 10, 12, 32, 32);
         int index = 0;
 
-        int crystalAmount = 0;
+        IngredientStack.Item crystal = null;
         for (IngredientStack.Item in : this.recipe.getInputs()) {
             // if ingredient is charged ember crystal, set it to another position
             if (in.getIngredient().test(new ItemStack(AGSingletons.EMBER_CRYSTAL_CHARGED))) {
-                widgets.addSlot(EMIPlugin.stackOf(in), 69, 10).drawBack(false);
-                crystalAmount = in.getAmount();
+                crystal = in;
                 continue;
             }
             int x = 5 + index % 3 * 18;
@@ -66,9 +65,9 @@ public class EMIGenesisSynthesizerRecipe extends BasicEmiRecipe {
 
             index++;
         }
-
-        int crystalHeight = 18 * crystalAmount / GenesisSynthesizerBlockEntity.MAX_CRYSTAL_TANK;
+        int crystalHeight = 18 * (crystal != null ? crystal.getAmount() : 0) / GenesisSynthesizerBlockEntity.MAX_CRYSTAL_TANK;
         widgets.addTexture(background, 89, 10 + Math.max(18 - crystalHeight, 0), 6, 18, 182, Math.max(18 - crystalHeight, 0));
+        if (crystal != null) widgets.addSlot(EMIPlugin.stackOf(crystal), 69, 10).drawBack(false);
 
         if (this.recipe.getFluid() != null) {
             widgets.addTank(EMIPlugin.stackOf(this.recipe.getFluid()), 60, 46, 18, 18, 16000).drawBack(false);
