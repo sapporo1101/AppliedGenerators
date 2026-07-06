@@ -1,7 +1,7 @@
 package io.github.sapporo1101.appgen.client.button;
 
 import appeng.client.gui.style.Blitter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public enum AAEIcon {
     ME_EXPORT_ON(0, 0),
@@ -14,7 +14,7 @@ public enum AAEIcon {
     public final int width;
     public final int height;
 
-    public static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("advanced_ae", "textures/guis/states.png");
+    public static final Identifier TEXTURE = Identifier.fromNamespaceAndPath("advanced_ae", "textures/guis/states.png");
     public static final int TEXTURE_WIDTH = 256;
     public static final int TEXTURE_HEIGHT = 256;
 

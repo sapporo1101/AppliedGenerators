@@ -19,7 +19,6 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.MenuType;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class SmelterMenu extends UpgradeableMenu<SmelterBlockEntity> implements IProgressProvider, IActionHolder {
@@ -37,11 +36,11 @@ public class SmelterMenu extends UpgradeableMenu<SmelterBlockEntity> implements 
     public YesNo autoExport = YesNo.NO;
 
     @GuiSync(9)
-    public DirectionSet outputSides = new DirectionSet(new ArrayList<>());
+    public DirectionSet outputSides = new DirectionSet(List.of());
 
     private final ActionMap actions = ActionMap.create();
 
-    public static final MenuType<SmelterMenu> TYPE = MenuTypeBuilder
+    public static final MenuType<@NotNull SmelterMenu> TYPE = MenuTypeBuilder
             .create(SmelterMenu::new, SmelterBlockEntity.class)
             .buildUnregistered(AppliedGenerators.id("smelter"));
 
@@ -49,19 +48,18 @@ public class SmelterMenu extends UpgradeableMenu<SmelterBlockEntity> implements 
         super(TYPE, id, playerInventory, host);
         this.addSlot(new AppEngSlot(host.getInputInv(), 0), SlotSemantics.MACHINE_INPUT);
         this.addSlot(new AppEngSlot(host.getOutputExposed(), 0), SlotSemantics.MACHINE_OUTPUT);
-        this.actions.put("set_side", o -> this.setOutputSide(o.get(0), o.get(1)));
+        this.actions.put("set_side", o -> this.setOutputSide(o.get(Direction.class), o.getBoolean()));
     }
 
-    private void setOutputSide(String name, boolean value) {
-        var side = Direction.byName(name);
+    private void setOutputSide(Direction side, boolean value) {
         this.getHost().setOutputSide(side, value);
+        this.getHost().saveChanges();
     }
 
     @Override
     protected void loadSettingsFromHost(IConfigManager cm) {
         this.autoExport = this.getHost().getConfigManager().getSetting(Settings.AUTO_EXPORT);
-        this.outputSides.clear();
-        this.outputSides.addAll(this.getHost().getOutputSides());
+        this.outputSides.reload(this.getHost().getOutputSidesCopy());
     }
 
     @Override
@@ -89,7 +87,7 @@ public class SmelterMenu extends UpgradeableMenu<SmelterBlockEntity> implements 
     }
 
     public List<Direction> getOutputSides() {
-        return outputSides.sides();
+        return outputSides.asList();
     }
 
     @NotNull

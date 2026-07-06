@@ -19,7 +19,6 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.MenuType;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class SingularityGeneratorMenu extends UpgradeableMenu<SingularityGeneratorBlockEntity> implements IProgressProvider, IActionHolder {
@@ -34,39 +33,38 @@ public class SingularityGeneratorMenu extends UpgradeableMenu<SingularityGenerat
     public YesNo meExport = YesNo.YES;
 
     @GuiSync(9)
-    public DirectionSet outputSides = new DirectionSet(new ArrayList<>());
+    public DirectionSet outputSides = new DirectionSet(List.of());
 
     private final ActionMap actions = ActionMap.create();
 
-    public static final MenuType<SingularityGeneratorMenu> TYPE = MenuTypeBuilder
+    public static final MenuType<@NotNull SingularityGeneratorMenu> TYPE = MenuTypeBuilder
             .create(SingularityGeneratorMenu::new, SingularityGeneratorBlockEntity.class)
             .buildUnregistered(AppliedGenerators.id("singularity_generator"));
 
     public SingularityGeneratorMenu(int id, Inventory playerInventory, SingularityGeneratorBlockEntity host) {
         super(TYPE, id, playerInventory, host);
         this.addSlot(new AppEngSlot(host.getInternalInventory(), 0), SlotSemantics.MACHINE_INPUT);
-        this.actions.put("set_side", o -> this.setOutputSide(o.get(0), o.get(1)));
+        this.actions.put("set_side", o -> this.setOutputSide(o.get(Direction.class), o.getBoolean()));
     }
 
-    private void setOutputSide(String name, boolean value) {
-        var side = Direction.byName(name);
+    private void setOutputSide(Direction side, boolean value) {
         if (value) {
             this.getHost().getOutputSides().add(side);
         } else {
             this.getHost().getOutputSides().remove(side);
         }
+        this.getHost().saveChanges();
     }
 
     @Override
     protected void loadSettingsFromHost(IConfigManager cm) {
         this.meExport = this.getHost().getConfigManager().getSetting(AAESettings.ME_EXPORT);
-        this.outputSides.clear();
-        this.outputSides.addAll(this.getHost().getOutputSides());
+        this.outputSides.reload(this.getHost().getOutputSides());
     }
 
     @Override
     public void broadcastChanges() {
-        if (isServerSide()) {
+        if (this.isServerSide()) {
             this.generatableFE = this.getHost().getGeneratableFE();
             this.lastGeneratePerTick = this.getHost().getLastGeneratePerTick();
         }
@@ -88,7 +86,7 @@ public class SingularityGeneratorMenu extends UpgradeableMenu<SingularityGenerat
     }
 
     public List<Direction> getOutputSides() {
-        return outputSides.sides();
+        return outputSides.asList();
     }
 
     @Override

@@ -1,8 +1,8 @@
 package io.github.sapporo1101.appgen.client.button;
 
-import appeng.client.gui.Icon;
 import appeng.client.gui.style.Blitter;
-import net.minecraft.client.gui.GuiGraphics;
+import appeng.util.Icon;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -42,13 +42,14 @@ public class OutputButton extends EPPButton {
         return this.isOn ? tooltipOn : tooltipOff;
     }
 
-    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partial) {
+    @Override
+    public void extractContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partial) {
         if (this.visible) {
             int yOffset = this.isHovered() ? 1 : 0;
             Icon bgIcon = this.isHovered() ? Icon.TOOLBAR_BUTTON_BACKGROUND_HOVER : (this.isOn() ? Icon.TOOLBAR_BUTTON_BACKGROUND_FOCUS : Icon.TOOLBAR_BUTTON_BACKGROUND);
-            bgIcon.getBlitter().dest(this.getX() - 1, this.getY() + yOffset, 18, 20).zOffset(2).blit(guiGraphics);
+            Blitter.icon(bgIcon).dest(this.getX() - 1, this.getY() + yOffset, 18, 20).blit(guiGraphics);
             if (!this.display.isEmpty()) {
-                guiGraphics.renderItem(this.display, this.getX(), this.getY() + 1 + yOffset, 0, 3);
+                guiGraphics.item(this.display, this.getX(), this.getY() + 1 + yOffset, 0);
             }
         }
 

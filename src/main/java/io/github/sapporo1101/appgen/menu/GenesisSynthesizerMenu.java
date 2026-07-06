@@ -22,7 +22,6 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.MenuType;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class GenesisSynthesizerMenu extends UpgradeableMenu<GenesisSynthesizerBlockEntity> implements IProgressProvider, ISubProgressProvider, IActionHolder {
@@ -43,11 +42,11 @@ public class GenesisSynthesizerMenu extends UpgradeableMenu<GenesisSynthesizerBl
     public YesNo autoExport = YesNo.NO;
 
     @GuiSync(9)
-    public DirectionSet outputSides = new DirectionSet(new ArrayList<>());
+    public DirectionSet outputSides = new DirectionSet(List.of());
 
     private final ActionMap actions = ActionMap.create();
 
-    public static final MenuType<GenesisSynthesizerMenu> TYPE = MenuTypeBuilder
+    public static final MenuType<@NotNull GenesisSynthesizerMenu> TYPE = MenuTypeBuilder
             .create(GenesisSynthesizerMenu::new, GenesisSynthesizerBlockEntity.class)
             .buildUnregistered(AppliedGenerators.id("genesis_synthesizer"));
 
@@ -62,19 +61,18 @@ public class GenesisSynthesizerMenu extends UpgradeableMenu<GenesisSynthesizerBl
         }
         this.addSlot(new AppEngSlot(new ConfigMenuInventory(host.getTank()), 0), AG_TANK_INPUT);
         this.addSlot(new AppEngSlot(new ConfigMenuInventory(host.getTank()), 1), AG_TANK_OUTPUT);
-        this.actions.put("set_side", o -> this.setOutputSide(o.get(0), o.get(1)));
+        this.actions.put("set_side", o -> this.setOutputSide(o.get(Direction.class), o.getBoolean()));
     }
 
-    private void setOutputSide(String name, boolean value) {
-        var side = Direction.byName(name);
+    private void setOutputSide(Direction side, boolean value) {
         this.getHost().setOutputSide(side, value);
+        this.getHost().saveChanges();
     }
 
     @Override
     protected void loadSettingsFromHost(IConfigManager cm) {
         this.autoExport = this.getHost().getConfigManager().getSetting(Settings.AUTO_EXPORT);
-        this.outputSides.clear();
-        this.outputSides.addAll(this.getHost().getOutputSides());
+        this.outputSides.reload(this.getHost().getOutputSidesCopy());
     }
 
     @Override
@@ -102,7 +100,7 @@ public class GenesisSynthesizerMenu extends UpgradeableMenu<GenesisSynthesizerBl
     }
 
     public List<Direction> getOutputSides() {
-        return outputSides.sides();
+        return outputSides.asList();
     }
 
     @NotNull

@@ -1,7 +1,5 @@
 package io.github.sapporo1101.appgen.common.blockentities;
 
-import com.glodblock.github.glodium.util.GlodUtil;
-import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.common.blocks.FluxCellBlock;
 import io.github.sapporo1101.appgen.xmod.ExternalTypes;
 import net.minecraft.core.BlockPos;
@@ -48,8 +46,8 @@ public abstract class FluxCellBlockEntity extends FluxCellBaseBlockEntity {
     }
 
     public static class Standard extends FluxCellBlockEntity {
-        public Standard(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(Standard.class, Standard::new, AGSingletons.FLUX_CELL), pos, blockState);
+        public Standard(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState);
         }
 
         @Override
@@ -59,8 +57,8 @@ public abstract class FluxCellBlockEntity extends FluxCellBaseBlockEntity {
     }
 
     public static class Dense extends FluxCellBlockEntity {
-        public Dense(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(Dense.class, Dense::new, AGSingletons.DENSE_FLUX_CELL), pos, blockState);
+        public Dense(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState);
         }
 
         @Override

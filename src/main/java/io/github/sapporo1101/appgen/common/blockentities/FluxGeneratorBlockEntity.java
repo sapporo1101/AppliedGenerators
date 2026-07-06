@@ -29,25 +29,25 @@ import appeng.util.Platform;
 import appeng.util.SettingsFrom;
 import com.glodblock.github.appflux.common.me.key.FluxKey;
 import com.glodblock.github.appflux.common.me.key.type.EnergyType;
-import com.glodblock.github.glodium.util.GlodUtil;
 import io.github.sapporo1101.appgen.api.AAESettings;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.common.blocks.FluxGeneratorBlock;
+import io.github.sapporo1101.appgen.menu.helper.DirectionSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentMap;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.neoforged.neoforge.registries.DeferredBlock;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -61,14 +61,15 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
     private final IUpgradeInventory upgrades;
     private final IConfigManager configManager;
     private final MachineSource source = new MachineSource(this);
-    private final Set<Direction> outputSides = EnumSet.noneOf(Direction.class);
+    protected final DirectionSet outputSides = new DirectionSet(List.of());
+
 
     private double lastGeneratePerTick = 0;
     public boolean isOn = false;
     private YesNo lastRedstoneState = YesNo.UNDECIDED;
     public int pulse = 0;
 
-    public FluxGeneratorBlockEntity(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState, FluxGeneratorBlock<?> block) {
+    public <T extends FluxGeneratorBlock<?>> FluxGeneratorBlockEntity(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState, DeferredBlock<@NotNull T> block) {
         super(blockEntityType, pos, blockState);
         this.getMainNode().setIdlePowerUsage(0F).setFlags(GridFlags.REQUIRE_CHANNEL).addService(IGridTickable.class, this);
         this.upgrades = UpgradeInventories.forMachine(block, 4, this::onUpgradeChanged);
@@ -80,17 +81,14 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         return EnumSet.complementOf(EnumSet.of(orientation.getSide(RelativeSide.TOP)));
     }
 
-    abstract int getBaseGeneratePerTick();
+    abstract long getBaseGeneratePerTick();
 
     @Override
     public void importSettings(SettingsFrom mode, DataComponentMap input, @Nullable Player player) {
         super.importSettings(mode, input, player);
-        var nbt = input.get(AGSingletons.EXTRA_SETTING);
-        if (nbt != null) {
-            this.outputSides.clear();
-            for (var side : nbt.getList("output_side", CompoundTag.TAG_STRING)) {
-                this.outputSides.add(Direction.byName(side.getAsString()));
-            }
+        var sides = input.get(AGSingletons.DIRECTION_SET);
+        if (sides != null) {
+            this.outputSides.reload(sides.asList());
         }
     }
 
@@ -98,44 +96,28 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
     public void exportSettings(SettingsFrom mode, DataComponentMap.Builder output, @Nullable Player player) {
         super.exportSettings(mode, output, player);
         if (mode == SettingsFrom.MEMORY_CARD) {
-            var nbt = new CompoundTag();
-            var sides = new ListTag();
-            for (var side : this.outputSides) {
-                sides.add(StringTag.valueOf(side.getName()));
-            }
-            nbt.put("output_side", sides);
-            output.set(AGSingletons.EXTRA_SETTING, nbt);
-        }
-    }
-
-    public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
-        super.saveAdditional(data, registries);
-        this.upgrades.writeToNBT(data, "upgrades", registries);
-        this.configManager.writeToNBT(data, registries);
-        var sides = new ListTag();
-        for (var side : this.outputSides) {
-            sides.add(StringTag.valueOf(side.getName()));
-        }
-        data.put("output_side", sides);
-    }
-
-    public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
-        super.loadTag(data, registries);
-        this.upgrades.readFromNBT(data, "upgrades", registries);
-        this.configManager.readFromNBT(data, registries);
-        this.outputSides.clear();
-        if (data.contains("output_side")) {
-            var list = data.getList("output_side", CompoundTag.TAG_STRING);
-            for (var name : list) {
-                this.outputSides.add(Direction.byName(name.getAsString()));
-            }
-        } else {
-            this.outputSides.addAll(List.of(Direction.values()));
+            output.set(AGSingletons.DIRECTION_SET, this.outputSides);
         }
     }
 
     @Override
-    public @Nullable InternalInventory getSubInventory(ResourceLocation id) {
+    public void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        this.upgrades.writeToNBT(output, "upgrades");
+        this.configManager.writeToNBT(output);
+        this.outputSides.save(output, "output_side");
+    }
+
+    @Override
+    public void loadTag(ValueInput input) {
+        super.loadTag(input);
+        this.upgrades.readFromNBT(input, "upgrades");
+        this.configManager.readFromNBT(input);
+        this.outputSides.load(input, "output_side");
+    }
+
+    @Override
+    public @Nullable InternalInventory getSubInventory(Identifier id) {
         if (id.equals(ISegmentedInventory.UPGRADES)) {
             return this.upgrades;
         }
@@ -186,8 +168,8 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
             if (this.pulse <= 0) return TickRateModulation.SLEEP;
             int ticks = Math.min(ticksSinceLastCall, this.pulse);
             this.pulse -= ticks;
-            int newFE = ticks * this.getGeneratePerTick();
-            final int sent = this.configManager.getSetting(AAESettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
+            long newFE = ticks * this.getGeneratePerTick();
+            final long sent = this.configManager.getSetting(AAESettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
             this.lastGeneratePerTick = (double) sent / ticks;
             if (this.pulse <= 0) {
                 this.updateBlockEntity(this.shouldUpdateIsOn());
@@ -196,8 +178,8 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
                 return sent > 0 ? TickRateModulation.FASTER : TickRateModulation.SLOWER;
             }
         } else {
-            int newFE = ticksSinceLastCall * this.getGeneratePerTick();
-            final int sent = this.configManager.getSetting(AAESettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
+            long newFE = ticksSinceLastCall * this.getGeneratePerTick();
+            final long sent = this.configManager.getSetting(AAESettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
             this.lastGeneratePerTick = (double) sent / ticksSinceLastCall;
             return sent > 0 ? TickRateModulation.FASTER : TickRateModulation.SLOWER;
         }
@@ -223,39 +205,53 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         });
     }
 
-    public int getGeneratePerTick() {
+    public long getGeneratePerTick() {
         if (this.upgrades == null) {
             return this.getBaseGeneratePerTick();
         }
         double upgradeMultiplier = 1 + this.upgrades.getInstalledUpgrades(AEItems.SPEED_CARD) * 0.5;
-        return (int) (this.getBaseGeneratePerTick() * upgradeMultiplier);
+        return (long) (this.getBaseGeneratePerTick() * upgradeMultiplier);
     }
 
-    public int sendFEToNetwork(int amount) {
+    public long sendFEToNetwork(long amount) {
         if (this.getGridNode() == null) return 0;
 
         IGrid grid = this.getGridNode().getGrid();
         IStorageService storage = grid.getStorageService();
 
-        return Math.toIntExact(storage.getInventory().insert(FE_KEY, amount, Actionable.MODULATE, this.source));
+        return storage.getInventory().insert(FE_KEY, amount, Actionable.MODULATE, this.source);
     }
 
-    private int sendFEToAdjacentBlock(int amount) {
+    private long sendFEToAdjacentBlock(long amount) {
         if (this.level == null) return 0;
 
-        int remaining = amount;
-        for (Direction dir : this.outputSides) {
-            if (remaining <= 0) break;
+        long sending = amount;
+        sides:
+        for (Direction dir : this.getOutputSides()) {
+            if (sending <= 0) break;
             BlockPos targetPos = this.getBlockPos().relative(dir);
-            IEnergyStorage storage = this.level.getCapability(Capabilities.EnergyStorage.BLOCK, targetPos, dir.getOpposite());
-            if (storage != null && storage.canReceive()) {
-                int canInsert = storage.receiveEnergy(remaining, true);
-                if (canInsert <= 0) continue;
-                int inserted = storage.receiveEnergy(remaining, false);
-                remaining -= inserted;
+            EnergyHandler storage = this.level.getCapability(Capabilities.Energy.BLOCK, targetPos, dir.getOpposite());
+            if (storage != null) {
+                while (sending > 0) {
+                    int canInsert;
+                    try (Transaction simulation = Transaction.openRoot()) {
+                        int batch = (int) Math.min(sending, Integer.MAX_VALUE);
+                        canInsert = storage.insert(batch, simulation);
+                    }
+
+                    if (canInsert <= 0) continue sides;
+
+                    try (Transaction transaction = Transaction.openRoot()) {
+                        int inserted = storage.insert(canInsert, transaction);
+                        if (inserted > 0) {
+                            transaction.commit();
+                            sending -= inserted;
+                        }
+                    }
+                }
             }
         }
-        return amount - remaining;
+        return amount - sending;
     }
 
     public void updateRedstoneState() {
@@ -291,7 +287,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
     }
 
     public Set<Direction> getOutputSides() {
-        return this.outputSides;
+        return this.outputSides.asSet();
     }
 
     @Override
@@ -301,120 +297,120 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
 
     public static class FG1k extends FluxGeneratorBlockEntity {
 
-        public FG1k(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(FG1k.class, FG1k::new, AGSingletons.FLUX_GENERATOR_1K), pos, blockState, AGSingletons.FLUX_GENERATOR_1K);
+        public FG1k(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.FLUX_GENERATOR_1K);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 20;
         }
     }
 
     public static class FG4k extends FluxGeneratorBlockEntity {
 
-        public FG4k(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(FG4k.class, FG4k::new, AGSingletons.FLUX_GENERATOR_4K), pos, blockState, AGSingletons.FLUX_GENERATOR_4K);
+        public FG4k(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.FLUX_GENERATOR_4K);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 80;
         }
     }
 
     public static class FG16k extends FluxGeneratorBlockEntity {
 
-        public FG16k(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(FG16k.class, FG16k::new, AGSingletons.FLUX_GENERATOR_16K), pos, blockState, AGSingletons.FLUX_GENERATOR_16K);
+        public FG16k(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.FLUX_GENERATOR_16K);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 320;
         }
     }
 
     public static class FG64k extends FluxGeneratorBlockEntity {
 
-        public FG64k(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(FG64k.class, FG64k::new, AGSingletons.FLUX_GENERATOR_64K), pos, blockState, AGSingletons.FLUX_GENERATOR_64K);
+        public FG64k(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.FLUX_GENERATOR_64K);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 1_280;
         }
     }
 
     public static class FG256k extends FluxGeneratorBlockEntity {
 
-        public FG256k(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(FG256k.class, FG256k::new, AGSingletons.FLUX_GENERATOR_256K), pos, blockState, AGSingletons.FLUX_GENERATOR_256K);
+        public FG256k(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.FLUX_GENERATOR_256K);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 5_120;
         }
     }
 
     public static class FG1m extends FluxGeneratorBlockEntity {
 
-        public FG1m(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(FG1m.class, FG1m::new, AGSingletons.FLUX_GENERATOR_1M), pos, blockState, AGSingletons.FLUX_GENERATOR_1M);
+        public FG1m(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.FLUX_GENERATOR_1M);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 20_480;
         }
     }
 
     public static class FG4m extends FluxGeneratorBlockEntity {
 
-        public FG4m(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(FG4m.class, FG4m::new, AGSingletons.FLUX_GENERATOR_4M), pos, blockState, AGSingletons.FLUX_GENERATOR_4M);
+        public FG4m(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.FLUX_GENERATOR_4M);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 81_920;
         }
     }
 
     public static class FG16m extends FluxGeneratorBlockEntity {
 
-        public FG16m(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(FG16m.class, FG16m::new, AGSingletons.FLUX_GENERATOR_16M), pos, blockState, AGSingletons.FLUX_GENERATOR_16M);
+        public FG16m(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.FLUX_GENERATOR_16M);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 327_680;
         }
     }
 
     public static class FG64m extends FluxGeneratorBlockEntity {
 
-        public FG64m(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(FG64m.class, FG64m::new, AGSingletons.FLUX_GENERATOR_64M), pos, blockState, AGSingletons.FLUX_GENERATOR_64M);
+        public FG64m(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.FLUX_GENERATOR_64M);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 1_310_720;
         }
     }
 
     public static class FG256m extends FluxGeneratorBlockEntity {
 
-        public FG256m(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(FG256m.class, FG256m::new, AGSingletons.FLUX_GENERATOR_256M), pos, blockState, AGSingletons.FLUX_GENERATOR_256M);
+        public FG256m(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.FLUX_GENERATOR_256M);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 5_242_880;
         }
     }

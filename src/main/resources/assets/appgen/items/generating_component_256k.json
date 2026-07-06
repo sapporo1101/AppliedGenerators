@@ -1,0 +1,6 @@
+{
+    "model": {
+        "type": "minecraft:model",
+        "model": "appgen:item/generating_component_256k"
+    }
+}

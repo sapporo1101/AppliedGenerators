@@ -6,17 +6,16 @@ import appeng.api.stacks.GenericStack;
 import appeng.helpers.externalstorage.GenericStackInv;
 import com.glodblock.github.appflux.common.me.key.FluxKey;
 import com.glodblock.github.appflux.common.me.key.type.EnergyType;
-import com.glodblock.github.glodium.util.GlodUtil;
-import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.common.blocks.CreativeFluxCellBlock;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
 public class CreativeFluxCellBlockEntity extends FluxCellBaseBlockEntity {
 
-    public CreativeFluxCellBlockEntity(BlockPos pos, BlockState blockState) {
-        super(GlodUtil.getTileType(CreativeFluxCellBlockEntity.class, CreativeFluxCellBlockEntity::new, AGSingletons.CREATIVE_FLUX_CELL), pos, blockState);
+    public CreativeFluxCellBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState blockState) {
+        super(type, pos, blockState);
     }
 
     @Override

@@ -13,7 +13,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.Enchantments;
-import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.functions.ApplyBonusCount;
 import net.minecraft.world.level.storage.loot.functions.ApplyExplosionDecay;
@@ -25,7 +25,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiConsumer;
 
 public class AGLootTableProvider extends LootTableProvider {
 
@@ -33,12 +32,11 @@ public class AGLootTableProvider extends LootTableProvider {
         super(output, Collections.emptySet(), Collections.singletonList(new LootTableProvider.SubProviderEntry(AGSubProvider::new, LootContextParamSets.BLOCK)), provider);
     }
 
-
     public static class AGSubProvider extends BlockLootSubProvider {
 
 
         protected AGSubProvider(HolderLookup.Provider provider) {
-            super(Set.of(), FeatureFlags.DEFAULT_FLAGS, provider);
+            super(Set.of(), FeatureFlags.REGISTRY.allFlags(), provider);
         }
 
         @Override
@@ -48,30 +46,29 @@ public class AGLootTableProvider extends LootTableProvider {
                     add(block, createSingleItemTable(block));
                 }
             }
-            add(AGSingletons.EMBER_BUD_SMALL, createSingleItemTableWithSilkTouch(AGSingletons.EMBER_BUD_SMALL, AGSingletons.EMBER_DUST));
-            add(AGSingletons.EMBER_BUD_MEDIUM, createSingleItemTableWithSilkTouch(AGSingletons.EMBER_BUD_MEDIUM, AGSingletons.EMBER_DUST));
-            add(AGSingletons.EMBER_BUD_LARGE, createSingleItemTableWithSilkTouch(AGSingletons.EMBER_BUD_LARGE, AGSingletons.EMBER_DUST));
-            add(AGSingletons.EMBER_CLUSTER, createSilkTouchDispatchTable(AGSingletons.EMBER_CLUSTER,
+            add(AGSingletons.EMBER_BUD_SMALL.get(), createSingleItemTableWithSilkTouch(AGSingletons.EMBER_BUD_SMALL.get(), AGSingletons.EMBER_DUST));
+            add(AGSingletons.EMBER_BUD_MEDIUM.get(), createSingleItemTableWithSilkTouch(AGSingletons.EMBER_BUD_MEDIUM.get(), AGSingletons.EMBER_DUST));
+            add(AGSingletons.EMBER_BUD_LARGE.get(), createSingleItemTableWithSilkTouch(AGSingletons.EMBER_BUD_LARGE.get(), AGSingletons.EMBER_DUST));
+            add(AGSingletons.EMBER_CLUSTER.get(), createSilkTouchDispatchTable(AGSingletons.EMBER_CLUSTER.get(),
                     LootItem.lootTableItem(AGSingletons.EMBER_CRYSTAL)
                             .apply(SetItemCountFunction.setCount(ConstantValue.exactly(1)))
                             .apply(ApplyBonusCount.addUniformBonusCount(getEnchantment(Enchantments.FORTUNE)))
                             .apply(ApplyExplosionDecay.explosionDecay()))
             );
-            add(AGSingletons.BUDDING_EMBER_DAMAGED, createSingleItemTableWithSilkTouch(AGSingletons.BUDDING_EMBER_DAMAGED, AGSingletons.EMBER_BLOCK));
-            add(AGSingletons.BUDDING_EMBER_CHIPPED, createSingleItemTableWithSilkTouch(AGSingletons.BUDDING_EMBER_CHIPPED, AGSingletons.BUDDING_EMBER_DAMAGED));
-            add(AGSingletons.BUDDING_EMBER_FLAWED, createSingleItemTableWithSilkTouch(AGSingletons.BUDDING_EMBER_FLAWED, AGSingletons.BUDDING_EMBER_CHIPPED));
-            add(AGSingletons.BUDDING_EMBER_FLAWLESS, createSingleItemTable(AGSingletons.BUDDING_EMBER_FLAWED));
-        }
-
-        @Override
-        public void generate(@NotNull BiConsumer<ResourceKey<LootTable>, LootTable.Builder> writer) {
-            generate();
-            map.forEach(writer);
+            add(AGSingletons.BUDDING_EMBER_DAMAGED.get(), createSingleItemTableWithSilkTouch(AGSingletons.BUDDING_EMBER_DAMAGED.get(), AGSingletons.EMBER_BLOCK));
+            add(AGSingletons.BUDDING_EMBER_CHIPPED.get(), createSingleItemTableWithSilkTouch(AGSingletons.BUDDING_EMBER_CHIPPED.get(), AGSingletons.BUDDING_EMBER_DAMAGED));
+            add(AGSingletons.BUDDING_EMBER_FLAWED.get(), createSingleItemTableWithSilkTouch(AGSingletons.BUDDING_EMBER_FLAWED.get(), AGSingletons.BUDDING_EMBER_CHIPPED));
+            add(AGSingletons.BUDDING_EMBER_FLAWLESS.get(), createSingleItemTable(AGSingletons.BUDDING_EMBER_FLAWED));
         }
 
         @SuppressWarnings("SameParameterValue")
         protected final Holder<Enchantment> getEnchantment(ResourceKey<Enchantment> key) {
             return registries.lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(key);
+        }
+
+        @Override
+        protected @NotNull Iterable<Block> getKnownBlocks() {
+            return AGRegistryHandler.INSTANCE.getBlocks();
         }
     }
 }

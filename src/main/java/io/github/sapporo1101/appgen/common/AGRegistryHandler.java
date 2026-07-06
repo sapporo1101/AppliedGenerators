@@ -4,6 +4,8 @@ import appeng.api.AECapabilities;
 import appeng.api.implementations.blockentities.ICraftingMachine;
 import appeng.api.implementations.items.IAEItemPowerStorage;
 import appeng.api.networking.IInWorldGridNodeHost;
+import appeng.api.parts.IPart;
+import appeng.api.parts.IPartItem;
 import appeng.api.upgrades.Upgrades;
 import appeng.block.AEBaseBlockItem;
 import appeng.block.AEBaseEntityBlock;
@@ -14,9 +16,10 @@ import appeng.blockentity.ServerTickingBlockEntity;
 import appeng.blockentity.powersink.AEBasePoweredBlockEntity;
 import appeng.core.definitions.AEItems;
 import appeng.items.AEBaseItem;
+import appeng.items.parts.PartItem;
 import appeng.items.tools.powered.powersink.PoweredItemCapabilities;
 import com.glodblock.github.glodium.registry.RegistryHandler;
-import com.glodblock.github.glodium.util.GlodUtil;
+import com.glodblock.github.glodium.registry.token.TileToken;
 import io.github.sapporo1101.appgen.AppliedGenerators;
 import io.github.sapporo1101.appgen.common.blockentities.FluxCellBaseBlockEntity;
 import io.github.sapporo1101.appgen.common.blockentities.GenesisSynthesizerBlockEntity;
@@ -24,6 +27,7 @@ import io.github.sapporo1101.appgen.common.blockentities.PatternBufferBlockEntit
 import io.github.sapporo1101.appgen.menu.*;
 import io.github.sapporo1101.appgen.recipe.GenesisSynthesizerRecipe;
 import io.github.sapporo1101.appgen.recipe.GenesisSynthesizerRecipeSerializer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -31,61 +35,105 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.neoforged.bus.api.SubscribeEvent;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.registries.DeferredBlock;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredItem;
+import net.neoforged.neoforge.registries.RegisterEvent;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class AGRegistryHandler extends RegistryHandler {
-
-    public static final AGRegistryHandler INSTANCE = new AGRegistryHandler();
+    public static AGRegistryHandler INSTANCE;
 
     @SuppressWarnings("UnstableApiUsage")
-    public AGRegistryHandler() {
-        super(AppliedGenerators.MODID);
-        this.cap(AEBaseInvBlockEntity.class, Capabilities.ItemHandler.BLOCK, AEBaseInvBlockEntity::getExposedItemHandler);
-        this.cap(AEBasePoweredBlockEntity.class, Capabilities.EnergyStorage.BLOCK, AEBasePoweredBlockEntity::getEnergyStorage);
-        this.cap(IInWorldGridNodeHost.class, AECapabilities.IN_WORLD_GRID_NODE_HOST, (object, context) -> object);
-        this.cap(IAEItemPowerStorage.class, Capabilities.EnergyStorage.ITEM, (object, context) -> new PoweredItemCapabilities(object, (IAEItemPowerStorage) object.getItem()));
-        this.cap(ICraftingMachine.class, AECapabilities.CRAFTING_MACHINE, (object, context) -> object);
-        this.cap(FluxCellBaseBlockEntity.class, Capabilities.EnergyStorage.BLOCK, FluxCellBaseBlockEntity::getEnergyStorage);
-        this.cap(GenesisSynthesizerBlockEntity.class, AECapabilities.GENERIC_INTERNAL_INV, (object, context) -> object.getTank());
-        this.cap(PatternBufferBlockEntity.class, AECapabilities.GENERIC_INTERNAL_INV, (object, context) -> object.getStorageInv());
+    public AGRegistryHandler(IEventBus modBus) {
+        super(AppliedGenerators.MODID, modBus);
+
+        modBus.addListener(this::onRegisterEvent);
+
+        this.cap(AEBaseInvBlockEntity.class, Capabilities.Item.BLOCK, AEBaseInvBlockEntity::getExposedItemHandler);
+        this.cap(AEBasePoweredBlockEntity.class, Capabilities.Energy.BLOCK, AEBasePoweredBlockEntity::getEnergyStorage);
+        this.cap(IInWorldGridNodeHost.class, AECapabilities.IN_WORLD_GRID_NODE_HOST, (nodeHost, _) -> nodeHost);
+        this.cap(IAEItemPowerStorage.class, Capabilities.Energy.ITEM, (itemStack, itemAccess) -> new PoweredItemCapabilities(itemAccess, itemStack.getItem(), (IAEItemPowerStorage) itemStack.getItem()));
+        this.cap(ICraftingMachine.class, AECapabilities.CRAFTING_MACHINE, (craftingMachine, _) -> craftingMachine);
+        this.cap(FluxCellBaseBlockEntity.class, Capabilities.Energy.BLOCK, FluxCellBaseBlockEntity::getEnergyStorage);
+        this.cap(GenesisSynthesizerBlockEntity.class, AECapabilities.GENERIC_INTERNAL_INV, (be, _) -> be.getTank());
+        this.cap(PatternBufferBlockEntity.class, AECapabilities.GENERIC_INTERNAL_INV, (be, _) -> be.getStorageInv());
     }
 
-    public <T extends AEBaseBlockEntity> void block(String name, AEBaseEntityBlock<T> block, Class<T> clazz, BlockEntityType.BlockEntitySupplier<? extends T> supplier, Function<Block, Item> function) {
-        bindTileEntity(clazz, block, supplier);
-        block(name, block, function);
-        tile(name, block.getBlockEntityType());
+    public <T extends AEBaseBlockEntity, B extends AEBaseEntityBlock<T>> DeferredBlock<@NotNull B> block(String name, Function<BlockBehaviour.Properties, B> builder, Class<T> clazz, AGRegistryHandler.TileFactory<@NotNull T> supplier, BiFunction<Block, Item.Properties, Item> itemBuilder) {
+        DeferredBlock<@NotNull B> aeBlock = this.block(name, builder, BlockBehaviour.Properties.of(), itemBuilder);
+        this.tile(name, clazz, supplier, aeBlock);
+        return aeBlock;
     }
 
-    public <T extends AEBaseBlockEntity> void block(String name, AEBaseEntityBlock<T> block, Class<T> clazz, BlockEntityType.BlockEntitySupplier<? extends T> supplier) {
-        this.block(name, block, clazz, supplier, b -> new AEBaseBlockItem(b, new Item.Properties()));
+    public <T extends AEBaseBlockEntity, B extends AEBaseEntityBlock<T>> DeferredBlock<@NotNull B> block(String name, Function<BlockBehaviour.Properties, B> builder, Class<T> clazz, AGRegistryHandler.TileFactory<@NotNull T> supplier) {
+        DeferredBlock<@NotNull B> aeBlock = this.block(name, builder, BlockBehaviour.Properties.of(), AEBaseBlockItem::new);
+        this.tile(name, clazz, supplier, aeBlock);
+        return aeBlock;
+    }
+
+    public <P extends IPart> DeferredItem<@NotNull PartItem<P>> item(String name, Class<P> partClass, Function<IPartItem<P>, P> factory) {
+        return this.item(name, (properties) -> new PartItem<>(properties, partClass, factory));
+    }
+
+    public <T extends AEBaseBlockEntity> void tile(String name, Class<T> tileClass, AGRegistryHandler.TileFactory<@NotNull T> factory, DeferredBlock<? extends @NotNull AEBaseEntityBlock<T>> block) {
+        this.tiles.register(name, () -> {
+            AtomicReference<BlockEntityType<@NotNull T>> holder = new AtomicReference<>();
+            BlockEntityType<@NotNull T> tileType = new BlockEntityType<>((pos, state) -> factory.create(holder.get(), pos, state), Set.of(block.get()));
+            holder.set(tileType);
+            BlockEntityTicker<@NotNull T> serverTicker = null;
+            if (ServerTickingBlockEntity.class.isAssignableFrom(tileClass)) {
+                serverTicker = (_, _, _, entity) -> ((ServerTickingBlockEntity) entity).serverTick();
+            }
+
+            BlockEntityTicker<@NotNull T> clientTicker = null;
+            if (ClientTickingBlockEntity.class.isAssignableFrom(tileClass)) {
+                clientTicker = (_, _, _, entity) -> ((ClientTickingBlockEntity) entity).clientTick();
+            }
+
+            block.get().setBlockEntity(tileClass, tileType, clientTicker, serverTicker);
+            Objects.requireNonNull(holder);
+            TileToken token = new TileToken(holder::get, tileClass);
+            this.tileTypes.add(token);
+            this.tileBind.add(Pair.of(token, Set.of(block.get())));
+            return tileType;
+        });
     }
 
     public Collection<Block> getBlocks() {
-        return this.blocks.stream().map(Pair::getRight).toList();
+        return this.blocks.getEntries().stream().map(DeferredHolder::get).map(b -> (Block) b).toList();
     }
 
-    @Override
-    public void runRegister() {
-        super.runRegister();
-        this.onRegisterContainer();
-        this.onRegisterRecipe();
+    private void onRegisterEvent(RegisterEvent e) {
+        if (e.getRegistry().equals(BuiltInRegistries.MENU)) {
+            this.onRegisterContainer();
+        } else if (e.getRegistry().equals(BuiltInRegistries.RECIPE_TYPE)) {
+            this.onRegisterRecipeType();
+        } else if (e.getRegistry().equals(BuiltInRegistries.RECIPE_SERIALIZER)) {
+            this.onRegisterRecipeSerializer();
+        }
     }
 
-    @SubscribeEvent
-    public void onRegisterCapabilities(RegisterCapabilitiesEvent event) {
-        super.onRegisterCapabilities(event);
-    }
-
-    private void onRegisterRecipe() {
+    private void onRegisterRecipeType() {
         Registry.register(BuiltInRegistries.RECIPE_TYPE, GenesisSynthesizerRecipe.ID, GenesisSynthesizerRecipe.TYPE);
+    }
+
+    private void onRegisterRecipeSerializer() {
         Registry.register(BuiltInRegistries.RECIPE_SERIALIZER, GenesisSynthesizerRecipe.ID, GenesisSynthesizerRecipeSerializer.INSTANCE);
     }
 
@@ -98,41 +146,29 @@ public class AGRegistryHandler extends RegistryHandler {
         Registry.register(BuiltInRegistries.MENU, AppliedGenerators.id("smelter"), SmelterMenu.TYPE);
     }
 
-    private <T extends AEBaseBlockEntity> void bindTileEntity(Class<T> clazz, AEBaseEntityBlock<T> block, BlockEntityType.BlockEntitySupplier<? extends T> supplier) {
-        BlockEntityTicker<T> serverTicker = null;
-        if (ServerTickingBlockEntity.class.isAssignableFrom(clazz)) {
-            serverTicker = (level, pos, state, entity) -> ((ServerTickingBlockEntity) entity).serverTick();
-        }
-        BlockEntityTicker<T> clientTicker = null;
-        if (ClientTickingBlockEntity.class.isAssignableFrom(clazz)) {
-            clientTicker = (level, pos, state, entity) -> ((ClientTickingBlockEntity) entity).clientTick();
-        }
-        block.setBlockEntity(clazz, GlodUtil.getTileType(clazz, supplier, block), clientTicker, serverTicker);
-    }
-
     public void registerTab(Registry<CreativeModeTab> registry) {
         var tab = CreativeModeTab.builder()
-                .icon(() -> new ItemStack(AGSingletons.FLUX_CELL))
-                .title(Component.translatable("itemGroup.appgen"))
+                .icon(() -> new ItemStack(AGSingletons.SINGULARITY_GENERATOR_1K))
+                .title(Component.translatable("itemGroup." + AppliedGenerators.MODID))
                 .displayItems((p, o) -> {
-                    for (Pair<String, Item> entry : items) {
-                        if (entry.getRight() instanceof AEBaseItem aeItem) {
+                    for (DeferredHolder<Item, ? extends Item> entry : this.items.getEntries()) {
+                        if (entry.value() instanceof AEBaseItem aeItem) {
                             aeItem.addToMainCreativeTab(p, o);
                         } else {
-                            o.accept(entry.getRight());
+                            o.accept(entry.value());
                         }
                     }
-                    for (Pair<String, Block> entry : blocks) {
-                        o.accept(entry.getRight());
+                    for (DeferredHolder<Block, ? extends Block> entry : this.blocks.getEntries()) {
+                        o.accept(entry.value());
                     }
                 })
                 .build();
         Registry.register(registry, AppliedGenerators.id("tab_main"), tab);
     }
 
-    public void onInit() {
-        for (Pair<String, Block> entry : blocks) {
-            Block block = entry.getRight();
+    public void init() {
+        for (DeferredHolder<Block, ? extends Block> entry : this.blocks.getEntries()) {
+            Block block = entry.value();
             if (block instanceof AEBaseEntityBlock<?>) {
                 AEBaseBlockEntity.registerBlockEntityItem(
                         ((AEBaseEntityBlock<?>) block).getBlockEntityType(),
@@ -189,5 +225,9 @@ public class AGRegistryHandler extends RegistryHandler {
         Upgrades.add(AEItems.REDSTONE_CARD, AGSingletons.FLUX_GENERATOR_256M, 1, "upgrade.appgen.flux_generator");
         Upgrades.add(AEItems.SPEED_CARD, AGSingletons.SMELTER, 4);
         Upgrades.add(AGSingletons.STACK_SMELTING_CARD, AGSingletons.SMELTER, 1);
+    }
+
+    public interface TileFactory<T extends BlockEntity> {
+        T create(BlockEntityType<@NotNull T> type, BlockPos worldPosition, BlockState blockState);
     }
 }

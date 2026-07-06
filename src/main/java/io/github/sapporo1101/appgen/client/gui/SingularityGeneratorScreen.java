@@ -29,7 +29,7 @@ public class SingularityGeneratorScreen extends UpgradeableScreen<SingularityGen
         widgets.add("progressBar", pb);
         this.meExportBtn = new AAEServerSettingToggleButton<>(AAESettings.ME_EXPORT, YesNo.NO);
         this.addToLeftToolbar(meExportBtn);
-        this.outputSideBtn = new ActionEPPButton(b -> this.openOutputConfig(), EAEIcon.OUTPUT_SIDES);
+        this.outputSideBtn = new ActionEPPButton(_ -> this.openOutputConfig(), EAEIcon.OUTPUT_SIDES);
         this.outputSideBtn.setMessage(Component.translatable("gui.appgen.set_output_sides.open"));
         this.addToLeftToolbar(this.outputSideBtn);
     }
@@ -41,7 +41,7 @@ public class SingularityGeneratorScreen extends UpgradeableScreen<SingularityGen
                     new ItemStack(AGSingletons.SINGULARITY_GENERATOR_1K),
                     this.getMenu().getHost(),
                     this.getMenu().getOutputSides(),
-                    (side, value) -> AGNetworkHandler.INSTANCE.sendToServer(new CAGGenericPacket("set_side", side.getName(), value)))
+                    (side, value) -> AGNetworkHandler.INSTANCE.sendToServer(new CAGGenericPacket("set_side", side, value)))
             );
         }
     }

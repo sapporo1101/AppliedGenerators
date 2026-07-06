@@ -1,5 +1,6 @@
 package io.github.sapporo1101.appgen.util;
 
+import appeng.crafting.RecipeAccess;
 import appeng.recipes.AERecipeTypes;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -17,7 +18,7 @@ public final class LavaTransformLogic {
     private static final Set<Item> lavaCache = new HashSet<>();
 
     static {
-        NeoForge.EVENT_BUS.addListener((ServerStartedEvent event) -> lavaCache.clear());
+        NeoForge.EVENT_BUS.addListener((ServerStartedEvent _) -> lavaCache.clear());
         NeoForge.EVENT_BUS.addListener((OnDatapackSyncEvent event) -> {
             if (event.getPlayer() == null) lavaCache.clear();
         });
@@ -28,7 +29,6 @@ public final class LavaTransformLogic {
                 .contains(entity.getItem().getItem());
     }
 
-    @SuppressWarnings("resource")
     public static boolean allIngredientsPresent(ItemEntity entity) {
         var x = entity.getX();
         var y = entity.getY();
@@ -40,11 +40,11 @@ public final class LavaTransformLogic {
                 .map(e -> ((ItemEntity) e).getItem().getItem())
                 .toList();
 
-        for (var recipe : level.getRecipeManager().getAllRecipesFor(AERecipeTypes.TRANSFORM)) {
+        for (var recipe : RecipeAccess.byType(level, AERecipeTypes.TRANSFORM)) {
             if (recipe.value().circumstance.isFluidTag(FluidTags.LAVA)) {
-                return recipe.value().getIngredients().stream().noneMatch(ingredient -> {
-                    for (var stack : ingredient.getItems()) {
-                        if (items.contains(stack.getItem())) return false;
+                return recipe.value().ingredients().stream().noneMatch(ingredient -> {
+                    for (var stack : ingredient.getValues()) {
+                        if (items.contains(stack.value())) return false;
                     }
 
                     return true;
@@ -58,13 +58,13 @@ public final class LavaTransformLogic {
     @SuppressWarnings("SameReturnValue")
     private static Set<Item> getLavaTransformableItems(Level level) {
         if (lavaCache.isEmpty()) {
-            for (var recipe : level.getRecipeManager().getAllRecipesFor(AERecipeTypes.TRANSFORM)) {
+            for (var recipe : RecipeAccess.byType(level, AERecipeTypes.TRANSFORM)) {
                 if (!recipe.value().circumstance.isFluidTag(FluidTags.LAVA)) continue;
 
-                lavaCache.add(recipe.value().output.getItem());
+                lavaCache.add(recipe.value().output.item().value());
 
                 for (var ingredient : recipe.value().ingredients) {
-                    for (var stack : ingredient.getItems()) lavaCache.add(stack.getItem());
+                    for (var stack : ingredient.getValues()) lavaCache.add(stack.value());
 
                     // Don't break here unlike AE2's TransformLogic, otherwise unprocessed items will burn up
                 }

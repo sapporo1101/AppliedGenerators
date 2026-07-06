@@ -3,7 +3,6 @@ package io.github.sapporo1101.appgen.common.blocks;
 import appeng.block.AEBaseBlock;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.common.blocks.interfaces.ISpecialDrop;
-import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -21,10 +20,9 @@ public class BuddingEmberBlock extends AEBaseBlock implements ISpecialDrop {
 
     public static final int GROWTH_CHANCE = 3;
     public static final int DECAY_CHANCE = 10;
-    private static final Direction[] DIRECTIONS = Direction.values();
 
-    public BuddingEmberBlock() {
-        super(stoneProps()
+    public BuddingEmberBlock(Properties props) {
+        super(stoneProps(props)
                 .strength(3, 8)
                 .requiresCorrectToolForDrops()
                 .randomTicks()
@@ -40,11 +38,11 @@ public class BuddingEmberBlock extends AEBaseBlock implements ISpecialDrop {
     public void randomTick(@NotNull BlockState state, @NotNull ServerLevel level, @NotNull BlockPos pos, RandomSource randomSource) {
         if (randomSource.nextInt(GROWTH_CHANCE) != 0) return;
         // Try to grow cluster
-        Direction direction = Util.getRandom(DIRECTIONS, randomSource);
+        Direction direction = Direction.getRandom(randomSource);
         BlockPos targetPos = pos.relative(direction);
         BlockState targetState = level.getBlockState(targetPos);
         Block newCluster;
-        if (canClusterGrowAtState(targetState)) newCluster = AGSingletons.EMBER_BUD_SMALL;
+        if (canClusterGrowAtState(targetState)) newCluster = AGSingletons.EMBER_BUD_SMALL.get();
         else newCluster = canClusterGrow(targetState, direction);
         if (newCluster == null) return;
         // Grow ember crystal
@@ -66,21 +64,21 @@ public class BuddingEmberBlock extends AEBaseBlock implements ISpecialDrop {
     @Nullable
     public static Block canClusterGrow(BlockState state, Direction side) {
         var cluster = state.getBlock();
-        if (cluster instanceof EmberClusterBlock && cluster != AGSingletons.EMBER_CLUSTER) {
+        if (cluster instanceof EmberClusterBlock && cluster != AGSingletons.EMBER_CLUSTER.get()) {
             if (state.getValue(AmethystClusterBlock.FACING) == side) {
-                if (cluster == AGSingletons.EMBER_BUD_SMALL) return AGSingletons.EMBER_BUD_MEDIUM;
-                if (cluster == AGSingletons.EMBER_BUD_MEDIUM) return AGSingletons.EMBER_BUD_LARGE;
-                if (cluster == AGSingletons.EMBER_BUD_LARGE) return AGSingletons.EMBER_CLUSTER;
+                if (cluster == AGSingletons.EMBER_BUD_SMALL.get()) return AGSingletons.EMBER_BUD_MEDIUM.get();
+                if (cluster == AGSingletons.EMBER_BUD_MEDIUM.get()) return AGSingletons.EMBER_BUD_LARGE.get();
+                if (cluster == AGSingletons.EMBER_BUD_LARGE.get()) return AGSingletons.EMBER_CLUSTER.get();
             }
         }
         return null;
     }
 
     public Block degradeBudding() {
-        if (this == AGSingletons.BUDDING_EMBER_FLAWLESS) return AGSingletons.BUDDING_EMBER_FLAWLESS;
-        if (this == AGSingletons.BUDDING_EMBER_FLAWED) return AGSingletons.BUDDING_EMBER_CHIPPED;
-        if (this == AGSingletons.BUDDING_EMBER_CHIPPED) return AGSingletons.BUDDING_EMBER_DAMAGED;
-        return AGSingletons.EMBER_BLOCK;
+        if (this == AGSingletons.BUDDING_EMBER_FLAWLESS.get()) return AGSingletons.BUDDING_EMBER_FLAWLESS.get();
+        if (this == AGSingletons.BUDDING_EMBER_FLAWED.get()) return AGSingletons.BUDDING_EMBER_CHIPPED.get();
+        if (this == AGSingletons.BUDDING_EMBER_CHIPPED.get()) return AGSingletons.BUDDING_EMBER_DAMAGED.get();
+        return AGSingletons.EMBER_BLOCK.get();
     }
 
 }

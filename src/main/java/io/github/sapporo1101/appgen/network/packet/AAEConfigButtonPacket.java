@@ -19,10 +19,10 @@ public record AAEConfigButtonPacket(Setting<?> option, boolean rotationDirection
     public static final StreamCodec<RegistryFriendlyByteBuf, AAEConfigButtonPacket> STREAM_CODEC =
             StreamCodec.ofMember(AAEConfigButtonPacket::write, AAEConfigButtonPacket::decode);
 
-    public static final Type<AAEConfigButtonPacket> TYPE = CustomAppEngPayload.createType("ag_config_button");
+    public static final Type<@NotNull AAEConfigButtonPacket> TYPE = CustomAppEngPayload.createType("ag_config_button");
 
     @Override
-    public @NotNull Type<AAEConfigButtonPacket> type() {
+    public @NotNull Type<@NotNull AAEConfigButtonPacket> type() {
         return TYPE;
     }
 

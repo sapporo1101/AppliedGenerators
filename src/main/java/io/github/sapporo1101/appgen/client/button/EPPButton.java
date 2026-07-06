@@ -1,9 +1,9 @@
 package io.github.sapporo1101.appgen.client.button;
 
-import appeng.client.gui.Icon;
 import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.IconButton;
-import net.minecraft.client.gui.GuiGraphics;
+import appeng.util.Icon;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -19,7 +19,8 @@ public abstract class EPPButton extends IconButton {
         return null;
     }
 
-    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partial) {
+    @Override
+    public void extractContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partial) {
         if (this.visible) {
             Item item = this.getItemOverlay();
             Blitter blitter = this.getBlitterIcon();
@@ -31,28 +32,28 @@ public abstract class EPPButton extends IconButton {
             int yOffset = this.isHovered() ? 1 : 0;
             if (this.isHalfSize()) {
                 if (!this.isDisableBackground()) {
-                    Icon.TOOLBAR_BUTTON_BACKGROUND.getBlitter().dest(this.getX(), this.getY()).zOffset(10).blit(guiGraphics);
+                    Blitter.icon(Icon.TOOLBAR_BUTTON_BACKGROUND).dest(this.getX(), this.getY()).blit(guiGraphics);
                 }
 
                 if (item != null) {
-                    guiGraphics.renderItem(new ItemStack(item), this.getX(), this.getY(), 0, 20);
+                    guiGraphics.item(new ItemStack(item), this.getX(), this.getY(), 0);
                 } else if (blitter != null) {
                     if (!this.active) {
                         blitter.opacity(0.5F);
                     }
 
-                    blitter.dest(this.getX(), this.getY()).zOffset(20).blit(guiGraphics);
+                    blitter.dest(this.getX(), this.getY()).blit(guiGraphics);
                 }
             } else {
                 if (!this.isDisableBackground()) {
                     Icon bgIcon = this.isHovered() ? Icon.TOOLBAR_BUTTON_BACKGROUND_HOVER : (this.isFocused() ? Icon.TOOLBAR_BUTTON_BACKGROUND_FOCUS : Icon.TOOLBAR_BUTTON_BACKGROUND);
-                    bgIcon.getBlitter().dest(this.getX() - 1, this.getY() + yOffset, 18, 20).zOffset(2).blit(guiGraphics);
+                    Blitter.icon(bgIcon).dest(this.getX() - 1, this.getY() + yOffset, 18, 20).blit(guiGraphics);
                 }
 
                 if (item != null) {
-                    guiGraphics.renderItem(new ItemStack(item), this.getX(), this.getY() + 1 + yOffset, 0, 3);
+                    guiGraphics.item(new ItemStack(item), this.getX(), this.getY() + 1 + yOffset, 0);
                 } else if (blitter != null) {
-                    blitter.dest(this.getX(), this.getY() + 1 + yOffset).zOffset(3).blit(guiGraphics);
+                    blitter.dest(this.getX(), this.getY() + 1 + yOffset).blit(guiGraphics);
                 }
             }
         }

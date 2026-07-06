@@ -11,10 +11,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.block.Block;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 
-import java.util.List;
+import java.util.function.Consumer;
 
 public class FluxCellBlockItem extends AEBaseBlockItem {
 
@@ -23,12 +21,12 @@ public class FluxCellBlockItem extends AEBaseBlockItem {
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
-    public void addCheckedInformation(ItemStack stack, TooltipContext context, List<Component> lines,
+    public void addCheckedInformation(ItemStack stack, TooltipContext context, Consumer<Component> toolTip,
                                       TooltipFlag advancedTooltips) {
+        super.addCheckedInformation(stack, context, toolTip, advancedTooltips);
         double storedEnergy = this.getStoredFE(stack);
         double maxEnergy = this.getMaxFE();
-        lines.add(
+        toolTip.accept(
                 Tooltips.of(
                         Tooltips.of(GuiText.StoredEnergy),
                         Tooltips.of(": "),

@@ -2,7 +2,7 @@ package io.github.sapporo1101.appgen.xmod;
 
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.AEKeyTypes;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class ExternalTypes {
 
@@ -13,22 +13,22 @@ public class ExternalTypes {
 
     static {
         try {
-            GAS = AEKeyTypes.get(ResourceLocation.parse("appmek:chemical"));
+            GAS = AEKeyTypes.get(Identifier.parse("appmek:chemical"));
         } catch (Exception e) {
             GAS = null;
         }
         try {
-            MANA = AEKeyTypes.get(ResourceLocation.parse("appbot:mana"));
+            MANA = AEKeyTypes.get(Identifier.parse("appbot:mana"));
         } catch (Exception e) {
             MANA = null;
         }
         try {
-            FLUX = AEKeyTypes.get(ResourceLocation.parse("appflux:flux"));
+            FLUX = AEKeyTypes.get(Identifier.parse("appflux:flux"));
         } catch (Exception e) {
             FLUX = null;
         }
         try {
-            SOURCE = AEKeyTypes.get(ResourceLocation.parse("arseng:source"));
+            SOURCE = AEKeyTypes.get(Identifier.parse("arseng:source"));
         } catch (Exception e) {
             SOURCE = null;
         }

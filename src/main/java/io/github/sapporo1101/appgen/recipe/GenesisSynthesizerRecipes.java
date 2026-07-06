@@ -2,11 +2,13 @@ package io.github.sapporo1101.appgen.recipe;
 
 import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.GenericStack;
+import appeng.crafting.RecipeAccess;
 import com.glodblock.github.glodium.recipe.stack.IngredientStack;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -16,8 +18,8 @@ public final class GenesisSynthesizerRecipes {
     private GenesisSynthesizerRecipes() {
     }
 
-    public static Iterable<RecipeHolder<GenesisSynthesizerRecipe>> getRecipes(Level level) {
-        return level.getRecipeManager().getAllRecipesFor(GenesisSynthesizerRecipe.TYPE);
+    public static Iterable<RecipeHolder<@NotNull GenesisSynthesizerRecipe>> getRecipes(Level level) {
+        return RecipeAccess.byType(level, GenesisSynthesizerRecipe.TYPE);
     }
 
     @Nullable
@@ -63,30 +65,8 @@ public final class GenesisSynthesizerRecipes {
             if (failed) {
                 continue;
             }
-
             return recipe;
         }
-
         return null;
-    }
-
-    public static boolean isValidIngredient(ItemStack stack, Level level) {
-        for (var holder : getRecipes(level)) {
-            var recipe = holder.value();
-            if (recipe.containsIngredient(stack)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public static boolean isValidIngredient(FluidStack stack, Level level) {
-        for (var holder : getRecipes(level)) {
-            var recipe = holder.value();
-            if (recipe.containsIngredient(stack)) {
-                return true;
-            }
-        }
-        return false;
     }
 }

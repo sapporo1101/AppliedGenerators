@@ -8,31 +8,31 @@ import appeng.util.SettingsFrom;
 import com.glodblock.github.appflux.common.me.key.FluxKey;
 import com.glodblock.github.appflux.common.me.key.type.EnergyType;
 import io.github.sapporo1101.appgen.common.AGSingletons;
+import io.github.sapporo1101.appgen.menu.helper.DirectionSet;
 import io.github.sapporo1101.appgen.xmod.ExternalTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentMap;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-public abstract class FluxCellBaseBlockEntity extends AEBaseBlockEntity implements BlockEntityTicker<FluxCellBaseBlockEntity> {
+public abstract class FluxCellBaseBlockEntity extends AEBaseBlockEntity implements BlockEntityTicker<@NotNull FluxCellBaseBlockEntity> {
     protected final GenericStackInv feInv;
-    protected final Set<Direction> outputSides = EnumSet.noneOf(Direction.class);
+    protected final DirectionSet outputSides = new DirectionSet(List.of());
 
     public FluxCellBaseBlockEntity(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
         super(blockEntityType, pos, blockState);
@@ -54,12 +54,9 @@ public abstract class FluxCellBaseBlockEntity extends AEBaseBlockEntity implemen
     @Override
     public void importSettings(SettingsFrom mode, DataComponentMap input, @Nullable Player player) {
         super.importSettings(mode, input, player);
-        var nbt = input.get(AGSingletons.EXTRA_SETTING);
-        if (nbt != null) {
-            this.outputSides.clear();
-            for (var side : nbt.getList("output_side", CompoundTag.TAG_STRING)) {
-                this.outputSides.add(Direction.byName(side.getAsString()));
-            }
+        var sides = input.get(AGSingletons.DIRECTION_SET);
+        if (sides != null) {
+            this.outputSides.reload(sides.asList());
         }
     }
 
@@ -67,40 +64,22 @@ public abstract class FluxCellBaseBlockEntity extends AEBaseBlockEntity implemen
     public void exportSettings(SettingsFrom mode, DataComponentMap.Builder output, @Nullable Player player) {
         super.exportSettings(mode, output, player);
         if (mode == SettingsFrom.MEMORY_CARD) {
-            var nbt = new CompoundTag();
-            var sides = new ListTag();
-            for (var side : this.outputSides) {
-                sides.add(StringTag.valueOf(side.getName()));
-            }
-            nbt.put("output_side", sides);
-            output.set(AGSingletons.EXTRA_SETTING, nbt);
+            output.set(AGSingletons.DIRECTION_SET, this.outputSides);
         }
     }
 
     @Override
-    public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
-        super.saveAdditional(data, registries);
-        this.feInv.writeToChildTag(data, "buffer", registries);
-        var sides = new ListTag();
-        for (var side : this.outputSides) {
-            sides.add(StringTag.valueOf(side.getName()));
-        }
-        data.put("output_side", sides);
+    public void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        this.feInv.writeToChildTag(output, "fe_inv");
+        this.outputSides.save(output, "output_side");
     }
 
     @Override
-    public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
-        super.loadTag(data, registries);
-        this.feInv.readFromChildTag(data, "buffer", registries);
-        this.outputSides.clear();
-        if (data.contains("output_side")) {
-            var list = data.getList("output_side", CompoundTag.TAG_STRING);
-            for (var name : list) {
-                this.outputSides.add(Direction.byName(name.getAsString()));
-            }
-        } else {
-            this.outputSides.addAll(List.of(Direction.values()));
-        }
+    public void loadTag(ValueInput input) {
+        super.loadTag(input);
+        this.feInv.readFromChildTag(input, "fe_inv");
+        this.outputSides.load(input, "output_side");
     }
 
     @Override
@@ -110,7 +89,7 @@ public abstract class FluxCellBaseBlockEntity extends AEBaseBlockEntity implemen
     }
 
     public Set<Direction> getOutputSides() {
-        return this.outputSides;
+        return this.outputSides.asSet();
     }
 
     public GenericStackInv getGenericInv() {
@@ -127,81 +106,74 @@ public abstract class FluxCellBaseBlockEntity extends AEBaseBlockEntity implemen
 
     @Override
     public void tick(@NotNull Level level, @NotNull BlockPos pos, @NotNull BlockState state, @NotNull FluxCellBaseBlockEntity be) {
-        if (!this.feInv.isEmpty() && !this.outputSides.isEmpty()) this.sendFEToAdjacentBlock();
+        if (!this.feInv.isEmpty() && !this.getOutputSides().isEmpty()) this.sendFEToAdjacentBlock();
     }
 
     private void sendFEToAdjacentBlock() {
         if (this.level == null) return;
 
-        for (Direction dir : this.outputSides) {
+        for (Direction dir : this.getOutputSides()) {
             if (this.feInv.isEmpty()) break;
             BlockPos targetPos = this.getBlockPos().relative(dir);
-            IEnergyStorage storage = this.level.getCapability(Capabilities.EnergyStorage.BLOCK, targetPos, dir.getOpposite());
-            if (storage != null && storage.canReceive()) {
-                int canInsert = storage.receiveEnergy(Integer.MAX_VALUE, true);
+            EnergyHandler storage = this.level.getCapability(Capabilities.Energy.BLOCK, targetPos, dir.getOpposite());
+            if (storage != null) {
+                int canInsert;
+                try (Transaction simulation = Transaction.openRoot()) {
+                    int sending = Math.toIntExact(this.feInv.extract(FluxKey.of(EnergyType.FE), Integer.MAX_VALUE, Actionable.SIMULATE, null));
+                    canInsert = storage.insert(sending, simulation);
+                }
+
                 if (canInsert <= 0) continue;
-                int extracted = Math.toIntExact(this.feInv.extract(FluxKey.of(EnergyType.FE), canInsert, Actionable.MODULATE, null));
-                storage.receiveEnergy(extracted, false);
+
+                try (Transaction transaction = Transaction.openRoot()) {
+                    int extracted = Math.toIntExact(this.feInv.extract(FluxKey.of(EnergyType.FE), canInsert, Actionable.MODULATE, null));
+                    int inserted = storage.insert(extracted, transaction);
+                    if (inserted > 0) transaction.commit();
+                }
             }
         }
     }
 
-    public IEnergyStorage getEnergyStorage(Direction dir) {
-        return new FluxCellEnergyStorage(this.feInv, this.outputSides, dir);
+    public EnergyHandler getEnergyStorage(Direction ignoredDir) {
+        return new FluxCellEnergyHandler(this.feInv);
     }
 
-    private record FluxCellEnergyStorage(
-            GenericStackInv inv,
-            Set<Direction> outputSides,
-            Direction dir
-    ) implements IEnergyStorage {
-
+    private record FluxCellEnergyHandler(
+            GenericStackInv inv
+    ) implements EnergyHandler {
         @Override
-        public int receiveEnergy(int toReceive, boolean simulate) {
-            if (!canReceive()) return 0;
-            if (simulate) {
-                // Simulate the insertion of energy
-                return Math.toIntExact(this.inv.insert(FluxKey.of(EnergyType.FE), toReceive, Actionable.SIMULATE, null));
-            } else {
-                // Actually insert energy
-                return Math.toIntExact(this.inv.insert(FluxKey.of(EnergyType.FE), toReceive, Actionable.MODULATE, null));
+        public int insert(int amount, @NotNull TransactionContext transaction) {
+            this.inv.updateSnapshots(transaction);
+            int canInsert = Math.toIntExact(this.inv.insert(FluxKey.of(EnergyType.FE), amount, Actionable.SIMULATE, null));
+            if (canInsert > 0) {
+                this.inv.insert(FluxKey.of(EnergyType.FE), canInsert, Actionable.MODULATE, null);
             }
+            return canInsert;
         }
 
         @Override
-        public int extractEnergy(int toExtract, boolean simulate) {
-            if (simulate) {
-                // Simulate the extraction of energy
-                return Math.toIntExact(this.inv.extract(FluxKey.of(EnergyType.FE), toExtract, Actionable.SIMULATE, null));
-            } else {
-                // Actually extract energy
-                return Math.toIntExact(this.inv.extract(FluxKey.of(EnergyType.FE), toExtract, Actionable.MODULATE, null));
+        public int extract(int amount, @NotNull TransactionContext transaction) {
+            this.inv.updateSnapshots(transaction);
+            int canExtract = Math.toIntExact(this.inv.extract(FluxKey.of(EnergyType.FE), amount, Actionable.SIMULATE, null));
+            if (canExtract > 0) {
+                this.inv.extract(FluxKey.of(EnergyType.FE), canExtract, Actionable.MODULATE, null);
             }
+            return canExtract;
         }
 
         @Override
-        public int getEnergyStored() {
-            int total = 0;
+        public long getAmountAsLong() {
+            long total = 0;
             for (int i = 0; i < this.inv.size(); i++) {
-                total += (int) this.inv.getAmount(i);
+                total += this.inv.getAmount(i);
             }
             return total;
         }
 
         @Override
-        public int getMaxEnergyStored() {
-            return Math.toIntExact(Math.min(this.inv.getCapacity(ExternalTypes.FLUX) * this.inv.size(), Integer.MAX_VALUE));
-        }
-
-        @Override
-        public boolean canExtract() {
-            return true;
-        }
-
-        @Override
-        public boolean canReceive() {
-            if (this.dir == null) return this.outputSides.isEmpty();
-            return !this.outputSides.contains(this.dir);
+        public long getCapacityAsLong() {
+            return this.inv.getCapacity(ExternalTypes.FLUX) * this.inv.size();
         }
     }
+
 }

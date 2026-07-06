@@ -4,7 +4,7 @@ import appeng.items.materials.UpgradeCardItem;
 
 public class StackSmeltingCardItem extends UpgradeCardItem {
 
-    public StackSmeltingCardItem() {
-        super(new Properties().fireResistant());
+    public StackSmeltingCardItem(Properties props) {
+        super(props.fireResistant());
     }
 }

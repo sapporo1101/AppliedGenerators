@@ -11,6 +11,7 @@ import me.shedaniel.rei.api.client.registry.display.DisplayRegistry;
 import me.shedaniel.rei.api.client.util.ClientEntryStacks;
 import me.shedaniel.rei.api.common.entry.EntryIngredient;
 import me.shedaniel.rei.api.common.entry.EntryStack;
+import me.shedaniel.rei.api.common.registry.display.DisplayConsumer;
 import me.shedaniel.rei.api.common.util.EntryStacks;
 import me.shedaniel.rei.forge.REIPluginClient;
 import me.shedaniel.rei.plugin.common.BuiltinPlugin;
@@ -28,7 +29,12 @@ public class REIPlugin implements REIClientPlugin {
         if (CompatLayerHelper.IS_LOADED) {
             return;
         }
-        registry.registerRecipeFiller(GenesisSynthesizerRecipe.class, GenesisSynthesizerRecipe.TYPE, REIGenesisSynthesizerDisplay::new);
+
+        DisplayConsumer.RecipeManagerConsumer.RecipeFillerBuilder<GenesisSynthesizerRecipe, REIGenesisSynthesizerDisplay> builder =
+                ((DisplayConsumer.RecipeManagerConsumer) registry).beginRecipeFiller(GenesisSynthesizerRecipe.class);
+
+        builder.filterType(GenesisSynthesizerRecipe.TYPE)
+                .fill(REIGenesisSynthesizerDisplay::new);
     }
 
     @Override
@@ -43,12 +49,10 @@ public class REIPlugin implements REIClientPlugin {
 
     public static EntryIngredient stackOf(IngredientStack.Item stack) {
         if (!stack.isEmpty()) {
-            var stacks = stack.getIngredient().getItems();
-            var result = EntryIngredient.builder(stacks.length);
+            var stacks = stack.getIngredient().getValues();
+            var result = EntryIngredient.builder(stacks.size());
             for (var ing : stacks) {
-                if (!ing.isEmpty()) {
-                    result.add(EntryStacks.of(ing.copyWithCount(stack.getAmount())));
-                }
+                result.add(EntryStacks.of(ing.value(), stack.getAmount()));
             }
             return result.build();
         }
@@ -57,14 +61,12 @@ public class REIPlugin implements REIClientPlugin {
 
     public static EntryIngredient stackOf(IngredientStack.Fluid stack, float tankSize) {
         if (!stack.isEmpty()) {
-            var stacks = stack.getIngredient().getStacks();
-            var result = EntryIngredient.builder(stacks.length);
+            var stacks = stack.getIngredient().fluids();
+            var result = EntryIngredient.builder(stacks.size());
             for (var ing : stacks) {
-                if (!ing.isEmpty()) {
-                    EntryStack<FluidStack> f = EntryStacks.of(ing.getFluid(), stack.getAmount());
-                    ClientEntryStacks.setFluidRenderRatio(f, (float) stack.getAmount() / tankSize);
-                    result.add(f);
-                }
+                EntryStack<FluidStack> f = EntryStacks.of(ing.value(), stack.getAmount());
+                ClientEntryStacks.setFluidRenderRatio(f, (float) stack.getAmount() / tankSize);
+                result.add(f);
             }
             return result.build();
         }

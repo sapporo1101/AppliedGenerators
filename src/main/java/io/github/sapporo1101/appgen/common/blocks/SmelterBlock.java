@@ -21,19 +21,17 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nonnull;
-
 public class SmelterBlock extends BlockBaseGui<SmelterBlockEntity> {
 
     public static final BooleanProperty WORKING = BooleanProperty.create("working");
 
-    public SmelterBlock() {
-        super(metalProps().lightLevel(state -> state.getValue(WORKING) ? 13 : 0));
+    public SmelterBlock(Properties props) {
+        super(metalProps(props).lightLevel(state -> state.getValue(WORKING) ? 13 : 0));
         this.registerDefaultState(this.defaultBlockState().setValue(WORKING, false));
     }
 
     @Override
-    protected void createBlockStateDefinition(@Nonnull StateDefinition.Builder<Block, BlockState> builder) {
+    protected void createBlockStateDefinition(@NotNull StateDefinition.Builder<Block, @NotNull BlockState> builder) {
         super.createBlockStateDefinition(builder);
         builder.add(WORKING);
     }

@@ -4,7 +4,7 @@ import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.ITooltip;
 import appeng.core.localization.GuiText;
 import io.github.sapporo1101.appgen.menu.interfaces.ISubProgressProvider;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.renderer.Rect2i;
@@ -43,7 +43,7 @@ public class SubProgressBar extends AbstractWidget implements ITooltip {
     }
 
     @Override
-    public void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
+    public void extractWidgetRenderState(@NotNull GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
         if (this.visible) {
             int max = this.source.getMaxSubProgress();
             int current = this.source.getCurrentSubProgress();

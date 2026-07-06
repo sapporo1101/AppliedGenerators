@@ -20,13 +20,13 @@ import org.jetbrains.annotations.NotNull;
 public class PatternBufferBlock extends BlockBaseGui<PatternBufferBlockEntity> {
     public static final BooleanProperty POWERED = BooleanProperty.create("powered");
 
-    public PatternBufferBlock() {
-        super(metalProps().noOcclusion());
+    public PatternBufferBlock(Properties props) {
+        super(metalProps(props).noOcclusion());
         this.registerDefaultState(this.defaultBlockState().setValue(POWERED, false));
     }
 
     @Override
-    protected void createBlockStateDefinition(@NotNull StateDefinition.Builder<Block, BlockState> builder) {
+    protected void createBlockStateDefinition(@NotNull StateDefinition.Builder<Block, @NotNull BlockState> builder) {
         super.createBlockStateDefinition(builder);
         builder.add(POWERED);
     }

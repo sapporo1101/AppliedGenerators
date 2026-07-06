@@ -1,0 +1,6 @@
+{
+    "model": {
+        "type": "minecraft:model",
+        "model": "appgen:item/printed_origination_processor"
+    }
+}

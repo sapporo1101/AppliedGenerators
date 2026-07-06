@@ -17,7 +17,7 @@ public class FluxCellScreen extends AEBaseScreen<FluxCellMenu> {
 
     public FluxCellScreen(FluxCellMenu menu, Inventory playerInventory, Component title, ScreenStyle style) {
         super(menu, playerInventory, title, style);
-        ActionEPPButton outputSideBtn = new ActionEPPButton(b -> this.openOutputConfig(), EAEIcon.OUTPUT_SIDES);
+        ActionEPPButton outputSideBtn = new ActionEPPButton(_ -> this.openOutputConfig(), EAEIcon.OUTPUT_SIDES);
         outputSideBtn.setMessage(Component.translatable("gui.appgen.set_output_sides.open"));
         this.addToLeftToolbar(outputSideBtn);
     }
@@ -29,7 +29,7 @@ public class FluxCellScreen extends AEBaseScreen<FluxCellMenu> {
                     new ItemStack(AGSingletons.FLUX_CELL),
                     this.getMenu().getHost(),
                     this.getMenu().getOutputSides(),
-                    (side, value) -> AGNetworkHandler.INSTANCE.sendToServer(new CAGGenericPacket("set_side", side.getName(), value)))
+                    (side, value) -> AGNetworkHandler.INSTANCE.sendToServer(new CAGGenericPacket("set_side", side, value)))
             );
         }
     }

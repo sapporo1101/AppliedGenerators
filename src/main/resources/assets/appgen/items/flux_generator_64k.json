@@ -1,0 +1,6 @@
+{
+    "model": {
+        "type": "minecraft:model",
+        "model": "appgen:item/flux_generator_64k"
+    }
+}

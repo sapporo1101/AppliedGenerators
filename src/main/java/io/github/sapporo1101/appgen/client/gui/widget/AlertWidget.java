@@ -1,7 +1,7 @@
 package io.github.sapporo1101.appgen.client.gui.widget;
 
 import appeng.client.gui.style.Blitter;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
@@ -15,7 +15,7 @@ public class AlertWidget extends AbstractWidget {
         this.powerAlert = powerAlert;
     }
 
-    protected void renderWidget(@NotNull GuiGraphics guiGraphics, int i, int i1, float v) {
+    protected void extractWidgetRenderState(@NotNull GuiGraphicsExtractor guiGraphics, int i, int i1, float v) {
         this.powerAlert.dest(this.getX(), this.getY()).blit(guiGraphics);
     }
 

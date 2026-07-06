@@ -1,10 +1,9 @@
 package io.github.sapporo1101.appgen.xmod.rei;
 
 import appeng.core.AppEng;
-import io.github.sapporo1101.appgen.AppliedGenerators;
+import appeng.util.ReadableNumberConverter;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.common.blockentities.GenesisSynthesizerBlockEntity;
-import io.github.sapporo1101.appgen.util.CommaSeparator;
 import me.shedaniel.math.Point;
 import me.shedaniel.math.Rectangle;
 import me.shedaniel.rei.api.client.gui.Renderer;
@@ -16,7 +15,7 @@ import me.shedaniel.rei.api.common.entry.EntryIngredient;
 import me.shedaniel.rei.api.common.entry.EntryStack;
 import me.shedaniel.rei.api.common.util.EntryStacks;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
@@ -33,7 +32,7 @@ public class REIGenesisSynthesizerCategory implements DisplayCategory<REIGenesis
 
     @Override
     public Component getTitle() {
-        return AGSingletons.GENESIS_SYNTHESIZER.getName();
+        return AGSingletons.GENESIS_SYNTHESIZER.get().getName();
     }
 
     @Override
@@ -43,8 +42,8 @@ public class REIGenesisSynthesizerCategory implements DisplayCategory<REIGenesis
 
     @Override
     public List<Widget> setupDisplay(REIGenesisSynthesizerDisplay recipeDisplay, Rectangle bounds) {
-        ResourceLocation background = AppEng.makeId("textures/guis/genesis_synthesizer.png");
-        ResourceLocation ae = AppliedGenerators.id("textures/gui/emi_ae.png");
+        Identifier background = AppEng.makeId("textures/guis/genesis_synthesizer.png");
+        Identifier aeIcon = AppEng.makeId("textures/xei/xei_icons.png");
 
         List<Widget> widgets = new ArrayList<>();
         widgets.add(Widgets.createRecipeBase(bounds));
@@ -52,11 +51,11 @@ public class REIGenesisSynthesizerCategory implements DisplayCategory<REIGenesis
 
         var energyLabel = Widgets.createLabel(
                 new Point(bounds.x + bounds.width / 2 + 4 + PADDING, bounds.y + 70 + PADDING),
-                Component.translatable("emi.text.appgen.genesis_synthesizer.energy", CommaSeparator.FORMATTER.format(recipeDisplay.getEnergy())));
+                Component.translatable("emi.text.appgen.genesis_synthesizer.energy", ReadableNumberConverter.format(recipeDisplay.getEnergy(), 4)));
         widgets.add(energyLabel);
         var energyLabelX = energyLabel.getBounds().getX();
         var energyLabelY = 72 + (energyLabel.getBounds().getHeight() - PADDING) / 2 + bounds.y + PADDING;
-        widgets.add(Widgets.createTexturedWidget(ae, energyLabelX - 16, energyLabelY - 9, 0, 0, 10, 12, 32, 32));
+        widgets.add(Widgets.createTexturedWidget(aeIcon, energyLabelX - 16, energyLabelY - 9, 0, 0, 16, 16));
 
         int index = 0;
 

@@ -6,27 +6,21 @@ import io.github.sapporo1101.appgen.client.ClientRegistryHandler;
 import io.github.sapporo1101.appgen.common.AGRegistryHandler;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.network.AGNetworkHandler;
-import net.minecraft.client.Minecraft;
+import io.github.sapporo1101.appgen.recipe.GenesisSynthesizerRecipe;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.api.distmarker.Dist;
+import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 @Mod(AppliedGenerators.MODID)
 public class AppliedGenerators {
     public static final String MODID = "appgen";
-    public static final Logger LOGGER = LogManager.getLogger();
     public static AppliedGenerators INSTANCE;
 
     public AppliedGenerators(IEventBus bus, ModContainer container) {
@@ -35,15 +29,14 @@ public class AppliedGenerators {
         if (!container.getModId().equals(MODID)) {
             throw new IllegalArgumentException("Invalid ID: " + MODID);
         }
+        AGRegistryHandler.INSTANCE = new AGRegistryHandler(bus);
+        AGSingletons.init(AGRegistryHandler.INSTANCE);
         bus.addListener((RegisterEvent e) -> {
             if (e.getRegistryKey().equals(Registries.CREATIVE_MODE_TAB)) {
                 AGRegistryHandler.INSTANCE.registerTab(e.getRegistry(Registries.CREATIVE_MODE_TAB));
-            } else if (e.getRegistryKey().equals(Registries.BLOCK)) {
-                AGSingletons.init(AGRegistryHandler.INSTANCE);
-                AGRegistryHandler.INSTANCE.runRegister();
             }
         });
-        if (FMLEnvironment.dist.isClient()) {
+        if (FMLEnvironment.getDist().isClient()) {
             bus.register(ClientRegistryHandler.INSTANCE);
         }
 
@@ -51,31 +44,23 @@ public class AppliedGenerators {
         bus.addListener(InitCapabilityProviders::register);
         bus.addListener(AGNetworkHandler.INSTANCE::onRegister);
 
-        bus.register(AGRegistryHandler.INSTANCE);
         AGComponents.DR.register(bus);
+        NeoForge.EVENT_BUS.addListener(this::sendSyncRecipe);
     }
 
     public void commonSetup(FMLCommonSetupEvent event) {
-        AGRegistryHandler.INSTANCE.onInit();
+        AGRegistryHandler.INSTANCE.init();
     }
 
-    @SubscribeEvent
-    public void onServerStarting(ServerStartingEvent event) {
-        // Do something when the server starts
-        LOGGER.info("HELLO from server starting");
+    public void sendSyncRecipe(OnDatapackSyncEvent event) {
+        event.sendRecipes(GenesisSynthesizerRecipe.TYPE);
     }
 
-    @EventBusSubscriber(modid = MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
-    public static class ClientModEvents {
-        @SubscribeEvent
-        public static void onClientSetup(FMLClientSetupEvent event) {
-            // Some client setup code
-            LOGGER.info("HELLO FROM CLIENT SETUP");
-            LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
-        }
+    public static Identifier id(String id) {
+        return Identifier.fromNamespaceAndPath(MODID, id);
     }
 
-    public static ResourceLocation id(String id) {
-        return ResourceLocation.fromNamespaceAndPath(MODID, id);
+    public static String stringId(String id) {
+        return id(id).toString();
     }
 }

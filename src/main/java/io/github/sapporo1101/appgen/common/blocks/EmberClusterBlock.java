@@ -4,17 +4,18 @@ import appeng.block.AEBaseBlock;
 import io.github.sapporo1101.appgen.common.blocks.interfaces.ISpecialDrop;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.material.MapColor;
@@ -32,7 +33,7 @@ public class EmberClusterBlock extends AEBaseBlock implements SimpleWaterloggedB
     private static final SoundType[] SOUND_MAP = new SoundType[]{SoundType.SMALL_AMETHYST_BUD, SoundType.MEDIUM_AMETHYST_BUD, SoundType.LARGE_AMETHYST_BUD, SoundType.AMETHYST_CLUSTER};
 
     public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
-    public static final DirectionProperty FACING = BlockStateProperties.FACING;
+    public static final EnumProperty<@NotNull Direction> FACING = BlockStateProperties.FACING;
     protected final VoxelShape northAabb;
     protected final VoxelShape southAabb;
     protected final VoxelShape eastAabb;
@@ -41,11 +42,11 @@ public class EmberClusterBlock extends AEBaseBlock implements SimpleWaterloggedB
     protected final VoxelShape downAabb;
 
     @SuppressWarnings("SuspiciousNameCombination")
-    public EmberClusterBlock(int tier, int height, int wide) {
-        super(defaultProps(MapColor.COLOR_ORANGE, SOUND_MAP[tier])
+    public EmberClusterBlock(Properties props, int tier, int height, int wide) {
+        super(defaultProps(props, MapColor.COLOR_ORANGE, SOUND_MAP[tier])
                 .forceSolidOn()
                 .strength(2.5f)
-                .lightLevel(s -> tier + 5)
+                .lightLevel(_ -> tier + 5)
                 .requiresCorrectToolForDrops()
         );
         this.registerDefaultState(this.defaultBlockState().setValue(WATERLOGGED, false).setValue(FACING, Direction.UP));
@@ -85,13 +86,13 @@ public class EmberClusterBlock extends AEBaseBlock implements SimpleWaterloggedB
     }
 
     @Override
-    public @NotNull BlockState updateShape(BlockState state, @NotNull Direction direction, @NotNull BlockState neighborState, @NotNull LevelAccessor level, @NotNull BlockPos currentPos, @NotNull BlockPos neighborPos) {
+    protected @NotNull BlockState updateShape(BlockState state, @NotNull LevelReader level, @NotNull ScheduledTickAccess ticks, @NotNull BlockPos currentPos, @NotNull Direction direction, @NotNull BlockPos neighbourPos, @NotNull BlockState neighbourState, @NotNull RandomSource random) {
         if (state.getValue(WATERLOGGED)) {
-            level.scheduleTick(currentPos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
+            ticks.scheduleTick(currentPos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
         }
         return direction == state.getValue(FACING).getOpposite() && !state.canSurvive(level, currentPos)
                 ? Blocks.AIR.defaultBlockState()
-                : super.updateShape(state, direction, neighborState, level, currentPos, neighborPos);
+                : super.updateShape(state, level, ticks, currentPos, direction, neighbourPos, neighbourState, random);
     }
 
     @SuppressWarnings("DataFlowIssue")
@@ -120,7 +121,7 @@ public class EmberClusterBlock extends AEBaseBlock implements SimpleWaterloggedB
     }
 
     @Override
-    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, @NotNull BlockState> builder) {
         builder.add(WATERLOGGED, FACING);
     }
 

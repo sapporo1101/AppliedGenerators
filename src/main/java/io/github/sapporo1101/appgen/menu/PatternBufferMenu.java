@@ -10,10 +10,11 @@ import io.github.sapporo1101.appgen.AppliedGenerators;
 import io.github.sapporo1101.appgen.common.blockentities.PatternBufferBlockEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.MenuType;
+import org.jetbrains.annotations.NotNull;
 
 public class PatternBufferMenu extends UpgradeableMenu<PatternBufferBlockEntity> {
 
-    public static final MenuType<PatternBufferMenu> TYPE = MenuTypeBuilder
+    public static final MenuType<@NotNull PatternBufferMenu> TYPE = MenuTypeBuilder
             .create(PatternBufferMenu::new, PatternBufferBlockEntity.class)
             .buildUnregistered(AppliedGenerators.id("pattern_buffer"));
 

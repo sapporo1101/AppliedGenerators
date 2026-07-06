@@ -1,10 +1,10 @@
 package io.github.sapporo1101.appgen.client.button;
 
 import appeng.client.gui.style.Blitter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class EAEIcon {
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("extendedae", "textures/guis/nicons.png");
+    private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath("extendedae", "textures/guis/nicons.png");
     public static final Blitter OUTPUT_SIDES;
 
     static {

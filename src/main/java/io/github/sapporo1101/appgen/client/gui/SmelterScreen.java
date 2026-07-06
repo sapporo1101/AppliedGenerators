@@ -35,7 +35,7 @@ public class SmelterScreen extends UpgradeableScreen<SmelterMenu> {
         widgets.add("progressBar", pb);
         this.autoExportBtn = new ServerSettingToggleButton<>(Settings.AUTO_EXPORT, YesNo.NO);
         this.addToLeftToolbar(autoExportBtn);
-        this.outputSideBtn = new ActionEPPButton(b -> this.openOutputConfig(), EAEIcon.OUTPUT_SIDES);
+        this.outputSideBtn = new ActionEPPButton(_ -> this.openOutputConfig(), EAEIcon.OUTPUT_SIDES);
         this.outputSideBtn.setMessage(Component.translatable("gui.appgen.set_output_sides.open"));
         this.addToLeftToolbar(this.outputSideBtn);
         this.powerAlert = new AlertWidget(style.getImage("powerAlert"));
@@ -50,7 +50,7 @@ public class SmelterScreen extends UpgradeableScreen<SmelterMenu> {
                     new ItemStack(AGSingletons.SMELTER),
                     this.getMenu().getHost(),
                     this.getMenu().getOutputSides(),
-                    (side, value) -> AGNetworkHandler.INSTANCE.sendToServer(new CAGGenericPacket("set_side", side.getName(), value)))
+                    (side, value) -> AGNetworkHandler.INSTANCE.sendToServer(new CAGGenericPacket("set_side", side, value)))
             );
         }
     }

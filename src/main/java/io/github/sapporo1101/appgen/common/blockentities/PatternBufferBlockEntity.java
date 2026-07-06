@@ -19,7 +19,6 @@ import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.glodblock.github.appflux.common.AFSingletons;
-import com.glodblock.github.glodium.util.GlodUtil;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.xmod.ExternalTypes;
 import it.unimi.dsi.fastutil.objects.Reference2IntArrayMap;
@@ -27,13 +26,16 @@ import it.unimi.dsi.fastutil.objects.Reference2IntMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -51,8 +53,8 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
 
     private final PatternInput patternInput = new PatternInput();
 
-    public PatternBufferBlockEntity(BlockPos pos, BlockState blockState) {
-        super(GlodUtil.getTileType(PatternBufferBlockEntity.class, PatternBufferBlockEntity::new, AGSingletons.PATTERN_BUFFER), pos, blockState);
+    public PatternBufferBlockEntity(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+        super(blockEntityType, pos, blockState);
     }
 
     private void onStorageChanged() {
@@ -92,38 +94,27 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
     }
 
     @Override
-    public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
-        super.saveAdditional(data, registries);
+    public void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
         for (int i = 0; i < this.storageInv.size(); i++) {
             GenericStackInv inv = this.storageInv.getInv(i);
-            inv.writeToChildTag(data, "buffer_" + i, registries);
+            inv.writeToChildTag(output, "buffer_" + i);
         }
-        InternalInventory pattern = this.getPatternInv();
-        if (pattern != InternalInventory.empty()) {
-            final CompoundTag opt = new CompoundTag();
-            ItemStack patternStack = pattern.getStackInSlot(0);
-            opt.put("item", patternStack.saveOptional(registries));
-            data.put("inv", opt);
-        }
-        this.upgrades.writeToNBT(data, "upgrades", registries);
-        this.patternInput.writeToChildTag(data, "pattern", registries);
+        this.patternInv.writeToNBT(output, "pattern_inv");
+        this.upgrades.writeToNBT(output, "upgrades");
+        this.patternInput.writeToChildTag(output, "pattern");
     }
 
     @Override
-    public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
-        super.loadTag(data, registries);
+    public void loadTag(ValueInput input) {
+        super.loadTag(input);
         for (int i = 0; i < this.storageInv.size(); i++) {
             GenericStackInv inv = this.storageInv.getInv(i);
-            inv.readFromChildTag(data, "buffer_" + i, registries);
+            inv.readFromChildTag(input, "buffer_" + i);
         }
-        InternalInventory pattern = this.getPatternInv();
-        if (pattern != InternalInventory.empty()) {
-            CompoundTag opt = data.getCompound("inv");
-            CompoundTag item = opt.getCompound("item");
-            pattern.setItemDirect(0, ItemStack.parseOptional(registries, item));
-        }
-        this.upgrades.readFromNBT(data, "upgrades", registries);
-        this.patternInput.readFromChildTag(data, "pattern", registries);
+        this.patternInv.readFromNBT(input, "pattern_inv");
+        this.upgrades.readFromNBT(input, "upgrades");
+        this.patternInput.readFromChildTag(input, "pattern");
         this.updateCapacity(); // update capacity after loading
     }
 
@@ -342,6 +333,11 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
             for (GenericStackInv inv : this.invs) inv.onChange();
         }
 
+        @Override
+        public void updateSnapshots(TransactionContext transaction) {
+            this.invs.forEach(inv -> inv.updateSnapshots(transaction));
+        }
+
         public void clear() {
             for (GenericStackInv inv : this.invs) inv.clear();
         }
@@ -392,49 +388,32 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
             return true;
         }
 
-        public void writeToChildTag(CompoundTag tag, String name, HolderLookup.Provider registries) {
+        public void writeToChildTag(ValueOutput output, String name) {
             if (!this.inputs.isEmpty()) {
                 for (int i = 0; i < this.inputs.size(); i++) {
-                    tag.put(name + "_" + i, this.writeToTag(registries, i));
-                }
-            } else {
-                for (int i = 0; i < 36; i++) {
-                    tag.remove(name + "_" + i);
+                    this.writeToTag(output.childrenList(name + "_" + i), i);
                 }
             }
         }
 
-        private ListTag writeToTag(HolderLookup.Provider registries, int index) {
-            ListTag tag = new ListTag();
-
+        private void writeToTag(ValueOutput.ValueOutputList output, int index) {
             for (var stack : this.inputs.get(index)) {
-                tag.add(GenericStack.writeTag(registries, stack));
+                GenericStack.writeTag(output.addChild(), stack);
             }
-
-            // Strip out trailing nulls
-            for (int i = tag.size() - 1; i >= 0; i--) {
-                if (tag.getCompound(i).isEmpty()) {
-                    tag.remove(i);
-                } else {
-                    break;
-                }
-            }
-
-            return tag;
         }
 
-        public void readFromChildTag(CompoundTag tag, String name, HolderLookup.Provider registries) {
-            this.inputs.clear();
+        public void readFromChildTag(ValueInput input, String name) {
             for (int i = 0; i < 36; i++) {
-                if (!tag.contains(name + "_" + i, Tag.TAG_LIST)) break;
-                readFromTag(tag.getList(name + "_" + i, Tag.TAG_COMPOUND), registries, i);
+                ValueInput.ValueInputList content = input.childrenListOrEmpty(name + "_" + i);
+                if (content.isEmpty()) break;
+                readFromTag(content, i);
             }
         }
 
-        private void readFromTag(ListTag tag, HolderLookup.Provider registries, int index) {
+        private void readFromTag(ValueInput.ValueInputList input, int index) {
             this.inputs.add(new ArrayList<>());
-            for (int i = 0; i < tag.size(); ++i) {
-                var stack = GenericStack.readTag(registries, tag.getCompound(i));
+            for (ValueInput inputElement : input) {
+                GenericStack stack = GenericStack.readTag(inputElement);
                 this.inputs.get(index).add(stack);
             }
         }
@@ -495,8 +474,8 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         }
 
         @Override
-        public void readFromNBT(CompoundTag data, String name, HolderLookup.Provider registries) {
-            super.readFromNBT(data, name, registries);
+        public void readFromNBT(ValueInput input, String name) {
+            super.readFromNBT(input, name);
             this.updateUpgradeInfo();
         }
 
@@ -558,9 +537,14 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         if (pattern != InternalInventory.empty()) {
             final CompoundTag opt = new CompoundTag();
             ItemStack patternStack = pattern.getStackInSlot(0);
-            opt.put("item", patternStack.saveOptional(registries));
+            ItemStack.OPTIONAL_CODEC.encodeStart(
+                            registries.createSerializationContext(NbtOps.INSTANCE), patternStack)
+                    .ifSuccess(tag -> opt.put("item", tag)
+                    );
             data.put("inv", opt);
         }
         return data;
     }
+
+
 }

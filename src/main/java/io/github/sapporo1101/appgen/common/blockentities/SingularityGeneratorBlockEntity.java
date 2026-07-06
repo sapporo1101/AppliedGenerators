@@ -31,29 +31,28 @@ import appeng.util.inv.filter.AEItemDefinitionFilter;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.glodblock.github.appflux.common.me.key.FluxKey;
 import com.glodblock.github.appflux.common.me.key.type.EnergyType;
-import com.glodblock.github.glodium.util.GlodUtil;
 import io.github.sapporo1101.appgen.api.AAESettings;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.common.blocks.SingularityGeneratorBlock;
+import io.github.sapporo1101.appgen.menu.helper.DirectionSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentMap;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.neoforged.neoforge.registries.DeferredBlock;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
@@ -66,13 +65,13 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
     private final IUpgradeInventory upgrades;
     private final IConfigManager configManager;
     private final MachineSource source = new MachineSource(this);
-    private final Set<Direction> outputSides = EnumSet.noneOf(Direction.class);
+    private final DirectionSet outputSides = new DirectionSet(List.of());
 
     private long generatableFE;
     private double lastGeneratePerTick = 0;
     public boolean isOn;
 
-    public SingularityGeneratorBlockEntity(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState, SingularityGeneratorBlock<?> block) {
+    public <T extends SingularityGeneratorBlock<?>> SingularityGeneratorBlockEntity(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState, DeferredBlock<@NotNull T> block) {
         super(blockEntityType, pos, blockState);
         this.getMainNode().setIdlePowerUsage(0F).setFlags(GridFlags.REQUIRE_CHANNEL).addService(IGridTickable.class, this);
         this.upgrades = UpgradeInventories.forMachine(block, 4, this::upgradeSetChanged);
@@ -81,7 +80,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         this.generatableFE = 0;
     }
 
-    abstract int getBaseGeneratePerTick();
+    abstract long getBaseGeneratePerTick();
 
     abstract long getBaseFEPerSingularity();
 
@@ -92,12 +91,9 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
     @Override
     public void importSettings(SettingsFrom mode, DataComponentMap input, @Nullable Player player) {
         super.importSettings(mode, input, player);
-        var nbt = input.get(AGSingletons.EXTRA_SETTING);
-        if (nbt != null) {
-            this.outputSides.clear();
-            for (var side : nbt.getList("output_side", CompoundTag.TAG_STRING)) {
-                this.outputSides.add(Direction.byName(side.getAsString()));
-            }
+        var sides = input.get(AGSingletons.DIRECTION_SET);
+        if (sides != null) {
+            this.outputSides.reload(sides.asList());
         }
     }
 
@@ -105,47 +101,30 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
     public void exportSettings(SettingsFrom mode, DataComponentMap.Builder output, @Nullable Player player) {
         super.exportSettings(mode, output, player);
         if (mode == SettingsFrom.MEMORY_CARD) {
-            var nbt = new CompoundTag();
-            var sides = new ListTag();
-            for (var side : this.outputSides) {
-                sides.add(StringTag.valueOf(side.getName()));
-            }
-            nbt.put("output_side", sides);
-            output.set(AGSingletons.EXTRA_SETTING, nbt);
+            output.set(AGSingletons.DIRECTION_SET, this.outputSides);
         }
     }
 
-    public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
-        super.saveAdditional(data, registries);
-        this.upgrades.writeToNBT(data, "upgrades", registries);
-        this.configManager.writeToNBT(data, registries);
-        data.putLong("generatableFE", this.getGeneratableFE());
-        var sides = new ListTag();
-        for (var side : this.outputSides) {
-            sides.add(StringTag.valueOf(side.getName()));
-        }
-        data.put("output_side", sides);
+    @Override
+    public void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        this.upgrades.writeToNBT(output, "upgrades");
+        this.configManager.writeToNBT(output);
+        this.outputSides.save(output, "output_side");
+        output.putLong("generatableFE", this.getGeneratableFE());
     }
 
-    public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
-        super.loadTag(data, registries);
-        this.upgrades.readFromNBT(data, "upgrades", registries);
-        this.setGeneratableFE(data.getLong("generatableFE"));
-        this.configManager.readFromNBT(data, registries);
-        this.outputSides.clear();
-        if (data.contains("output_side")) {
-            var list = data.getList("output_side", CompoundTag.TAG_STRING);
-            for (var name : list) {
-                this.outputSides.add(Direction.byName(name.getAsString()));
-            }
-        } else {
-            this.outputSides.addAll(List.of(Direction.values()));
-        }
+    public void loadTag(ValueInput input) {
+        super.loadTag(input);
+        this.upgrades.readFromNBT(input, "upgrades");
+        this.configManager.readFromNBT(input);
+        this.outputSides.load(input, "output_side");
+        this.setGeneratableFE(input.getLongOr("generatableFE", 0));
     }
 
     @Nullable
     @Override
-    public InternalInventory getSubInventory(ResourceLocation id) {
+    public InternalInventory getSubInventory(Identifier id) {
         if (id.equals(ISegmentedInventory.STORAGE)) {
             return this.getInternalInventory();
         } else if (id.equals(ISegmentedInventory.UPGRADES)) {
@@ -283,12 +262,12 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         this.generatableFE = generatableFE;
     }
 
-    public int getGeneratePerTick() {
+    public long getGeneratePerTick() {
         if (this.upgrades == null) {
             return this.getBaseGeneratePerTick();
         }
         double upgradeMultiplier = 1 + this.upgrades.getInstalledUpgrades(AEItems.SPEED_CARD) * 0.5;
-        return (int) (this.getBaseGeneratePerTick() * upgradeMultiplier);
+        return (long) (this.getBaseGeneratePerTick() * upgradeMultiplier);
     }
 
     public long getFEPerSingularity() {
@@ -314,24 +293,34 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
     private long sendFEToAdjacentBlock(long amount) {
         if (this.level == null) return 0;
 
-        long remaining = amount;
-        forDir:
-        for (Direction dir : this.outputSides) {
-            if (remaining <= 0) break;
+        long sending = amount;
+        sides:
+        for (Direction dir : this.getOutputSides()) {
+            if (sending <= 0) break;
             BlockPos targetPos = this.getBlockPos().relative(dir);
-            IEnergyStorage storage = this.level.getCapability(Capabilities.EnergyStorage.BLOCK, targetPos, dir.getOpposite());
-            if (storage != null && storage.canReceive()) {
-                for (int i = 0; i < remaining / Integer.MAX_VALUE + 1; i++) {
-                    int batch = (int) Math.min(remaining, Integer.MAX_VALUE);
-                    int canInsert = storage.receiveEnergy(batch, true);
-                    if (canInsert <= 0) continue forDir;
-                    int inserted = storage.receiveEnergy(batch, false);
-                    this.setGeneratableFE(Math.max(0, this.getGeneratableFE() - inserted));
-                    remaining -= inserted;
+            EnergyHandler storage = this.level.getCapability(Capabilities.Energy.BLOCK, targetPos, dir.getOpposite());
+            if (storage != null) {
+                while (sending > 0) {
+                    int canInsert;
+                    try (Transaction simulation = Transaction.openRoot()) {
+                        int batch = (int) Math.min(sending, Integer.MAX_VALUE);
+                        canInsert = storage.insert(batch, simulation);
+                    }
+
+                    if (canInsert <= 0) continue sides;
+
+                    try (Transaction transaction = Transaction.openRoot()) {
+                        int inserted = storage.insert(canInsert, transaction);
+                        if (inserted > 0) {
+                            transaction.commit();
+                            sending -= inserted;
+                        }
+                    }
                 }
+
             }
         }
-        return amount - remaining;
+        return amount - sending;
     }
 
     public double getLastGeneratePerTick() {
@@ -339,7 +328,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
     }
 
     public Set<Direction> getOutputSides() {
-        return this.outputSides;
+        return this.outputSides.asSet();
     }
 
     @Override
@@ -362,12 +351,12 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
 
     public static class SG1k extends SingularityGeneratorBlockEntity {
 
-        public SG1k(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(SG1k.class, SG1k::new, AGSingletons.SINGULARITY_GENERATOR_1K), pos, blockState, AGSingletons.SINGULARITY_GENERATOR_1K);
+        public SG1k(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.SINGULARITY_GENERATOR_1K);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 200;
         }
 
@@ -379,12 +368,12 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
 
     public static class SG4k extends SingularityGeneratorBlockEntity {
 
-        public SG4k(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(SG4k.class, SG4k::new, AGSingletons.SINGULARITY_GENERATOR_4K), pos, blockState, AGSingletons.SINGULARITY_GENERATOR_4K);
+        public SG4k(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.SINGULARITY_GENERATOR_4K);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 800;
         }
 
@@ -396,12 +385,12 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
 
     public static class SG16k extends SingularityGeneratorBlockEntity {
 
-        public SG16k(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(SG16k.class, SG16k::new, AGSingletons.SINGULARITY_GENERATOR_16K), pos, blockState, AGSingletons.SINGULARITY_GENERATOR_16K);
+        public SG16k(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.SINGULARITY_GENERATOR_16K);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 3_200;
         }
 
@@ -413,12 +402,12 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
 
     public static class SG64k extends SingularityGeneratorBlockEntity {
 
-        public SG64k(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(SG64k.class, SG64k::new, AGSingletons.SINGULARITY_GENERATOR_64K), pos, blockState, AGSingletons.SINGULARITY_GENERATOR_64K);
+        public SG64k(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.SINGULARITY_GENERATOR_64K);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 12_800;
         }
 
@@ -430,12 +419,12 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
 
     public static class SG256k extends SingularityGeneratorBlockEntity {
 
-        public SG256k(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(SG256k.class, SG256k::new, AGSingletons.SINGULARITY_GENERATOR_256K), pos, blockState, AGSingletons.SINGULARITY_GENERATOR_256K);
+        public SG256k(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.SINGULARITY_GENERATOR_256K);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 51_200;
         }
 
@@ -447,12 +436,12 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
 
     public static class SG1m extends SingularityGeneratorBlockEntity {
 
-        public SG1m(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(SG1m.class, SG1m::new, AGSingletons.SINGULARITY_GENERATOR_1M), pos, blockState, AGSingletons.SINGULARITY_GENERATOR_1M);
+        public SG1m(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.SINGULARITY_GENERATOR_1M);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 204_800;
         }
 
@@ -464,12 +453,12 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
 
     public static class SG4m extends SingularityGeneratorBlockEntity {
 
-        public SG4m(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(SG4m.class, SG4m::new, AGSingletons.SINGULARITY_GENERATOR_4M), pos, blockState, AGSingletons.SINGULARITY_GENERATOR_4M);
+        public SG4m(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.SINGULARITY_GENERATOR_4M);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 819_200;
         }
 
@@ -481,12 +470,12 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
 
     public static class SG16m extends SingularityGeneratorBlockEntity {
 
-        public SG16m(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(SG16m.class, SG16m::new, AGSingletons.SINGULARITY_GENERATOR_16M), pos, blockState, AGSingletons.SINGULARITY_GENERATOR_16M);
+        public SG16m(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.SINGULARITY_GENERATOR_16M);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 3_276_800;
         }
 
@@ -498,12 +487,12 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
 
     public static class SG64m extends SingularityGeneratorBlockEntity {
 
-        public SG64m(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(SG64m.class, SG64m::new, AGSingletons.SINGULARITY_GENERATOR_64M), pos, blockState, AGSingletons.SINGULARITY_GENERATOR_64M);
+        public SG64m(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.SINGULARITY_GENERATOR_64M);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 13_107_200;
         }
 
@@ -515,12 +504,12 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
 
     public static class SG256m extends SingularityGeneratorBlockEntity {
 
-        public SG256m(BlockPos pos, BlockState blockState) {
-            super(GlodUtil.getTileType(SG256m.class, SG256m::new, AGSingletons.SINGULARITY_GENERATOR_256M), pos, blockState, AGSingletons.SINGULARITY_GENERATOR_256M);
+        public SG256m(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+            super(blockEntityType, pos, blockState, AGSingletons.SINGULARITY_GENERATOR_256M);
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 52_428_800;
         }
 

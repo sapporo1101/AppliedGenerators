@@ -17,7 +17,6 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.MenuType;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class FluxGeneratorMenu extends UpgradeableMenu<FluxGeneratorBlockEntity> implements IActionHolder {
@@ -32,34 +31,33 @@ public class FluxGeneratorMenu extends UpgradeableMenu<FluxGeneratorBlockEntity>
     public YesNo meExport = YesNo.YES;
 
     @GuiSync(9)
-    public DirectionSet outputSides = new DirectionSet(new ArrayList<>());
+    public DirectionSet outputSides = new DirectionSet(List.of());
 
     private final ActionMap actions = ActionMap.create();
 
-    public static final MenuType<FluxGeneratorMenu> TYPE = MenuTypeBuilder
+    public static final MenuType<@NotNull FluxGeneratorMenu> TYPE = MenuTypeBuilder
             .create(FluxGeneratorMenu::new, FluxGeneratorBlockEntity.class)
             .buildUnregistered(AppliedGenerators.id("flux_generator"));
 
     public FluxGeneratorMenu(int id, Inventory playerInventory, FluxGeneratorBlockEntity host) {
         super(TYPE, id, playerInventory, host);
-        this.actions.put("set_side", o -> this.setOutputSide(o.get(0), o.get(1)));
+        this.actions.put("set_side", o -> this.setOutputSide(o.get(Direction.class), o.getBoolean()));
     }
 
-    private void setOutputSide(String name, boolean value) {
-        var side = Direction.byName(name);
+    private void setOutputSide(Direction side, boolean value) {
         if (value) {
             this.getHost().getOutputSides().add(side);
         } else {
             this.getHost().getOutputSides().remove(side);
         }
+        this.getHost().saveChanges();
     }
 
     @Override
     protected void loadSettingsFromHost(IConfigManager cm) {
         this.meExport = this.getHost().getConfigManager().getSetting(AAESettings.ME_EXPORT);
         this.setRedStoneMode(this.getHost().getConfigManager().getSetting(Settings.REDSTONE_CONTROLLED));
-        this.outputSides.clear();
-        this.outputSides.addAll(this.getHost().getOutputSides());
+        this.outputSides.reload(this.getHost().getOutputSides());
     }
 
     @Override
@@ -76,7 +74,7 @@ public class FluxGeneratorMenu extends UpgradeableMenu<FluxGeneratorBlockEntity>
     }
 
     public List<Direction> getOutputSides() {
-        return outputSides.sides();
+        return outputSides.asList();
     }
 
     @Override

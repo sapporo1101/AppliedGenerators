@@ -11,20 +11,19 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
-
-import javax.annotation.Nonnull;
+import org.jetbrains.annotations.NotNull;
 
 public class GenesisSynthesizerBlock extends BlockBaseGui<GenesisSynthesizerBlockEntity> {
 
     public static final BooleanProperty WORKING = BooleanProperty.create("working");
 
-    public GenesisSynthesizerBlock() {
-        super(metalProps());
+    public GenesisSynthesizerBlock(Properties props) {
+        super(metalProps(props));
         this.registerDefaultState(this.defaultBlockState().setValue(WORKING, false));
     }
 
     @Override
-    protected void createBlockStateDefinition(@Nonnull StateDefinition.Builder<Block, BlockState> builder) {
+    protected void createBlockStateDefinition(@NotNull StateDefinition.Builder<Block, @NotNull BlockState> builder) {
         super.createBlockStateDefinition(builder);
         builder.add(WORKING);
     }

@@ -1,6 +1,6 @@
 package io.github.sapporo1101.appgen.datagen;
 
-import appeng.datagen.providers.tags.ConventionTags;
+import appeng.core.ConventionTags;
 import io.github.sapporo1101.appgen.AppliedGenerators;
 import io.github.sapporo1101.appgen.common.AGRegistryHandler;
 import io.github.sapporo1101.appgen.common.AGSingletons;
@@ -10,15 +10,14 @@ import net.minecraft.data.PackOutput;
 import net.minecraft.tags.BlockTags;
 import net.neoforged.neoforge.common.Tags;
 import net.neoforged.neoforge.common.data.BlockTagsProvider;
-import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
 
 public class AGBlockTagProvider extends BlockTagsProvider {
 
-    public AGBlockTagProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookupProvider, ExistingFileHelper existingFileHelper) {
-        super(output, lookupProvider, AppliedGenerators.MODID, existingFileHelper);
+    public AGBlockTagProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookupProvider) {
+        super(output, lookupProvider, AppliedGenerators.MODID);
     }
 
     @Override
@@ -27,19 +26,19 @@ public class AGBlockTagProvider extends BlockTagsProvider {
             tag(BlockTags.MINEABLE_WITH_PICKAXE).add(block);
         }
         tag(AGTags.EMBER_BLOCK_BLOCK)
-                .add(AGSingletons.EMBER_BLOCK);
+                .add(AGSingletons.EMBER_BLOCK.get());
         tag(Tags.Blocks.STORAGE_BLOCKS)
                 .addTag(AGTags.EMBER_BLOCK_BLOCK);
         tag(ConventionTags.BUDDING_BLOCKS_BLOCKS)
-                .add(AGSingletons.BUDDING_EMBER_DAMAGED)
-                .add(AGSingletons.BUDDING_EMBER_CHIPPED)
-                .add(AGSingletons.BUDDING_EMBER_FLAWED)
-                .add(AGSingletons.BUDDING_EMBER_FLAWLESS);
+                .add(AGSingletons.BUDDING_EMBER_DAMAGED.get())
+                .add(AGSingletons.BUDDING_EMBER_CHIPPED.get())
+                .add(AGSingletons.BUDDING_EMBER_FLAWED.get())
+                .add(AGSingletons.BUDDING_EMBER_FLAWLESS.get());
         tag(ConventionTags.BUDS_BLOCKS)
-                .add(AGSingletons.EMBER_BUD_SMALL)
-                .add(AGSingletons.EMBER_BUD_MEDIUM)
-                .add(AGSingletons.EMBER_BUD_LARGE);
+                .add(AGSingletons.EMBER_BUD_SMALL.get())
+                .add(AGSingletons.EMBER_BUD_MEDIUM.get())
+                .add(AGSingletons.EMBER_BUD_LARGE.get());
         tag(ConventionTags.CLUSTERS_BLOCKS)
-                .add(AGSingletons.EMBER_CLUSTER);
+                .add(AGSingletons.EMBER_CLUSTER.get());
     }
 }

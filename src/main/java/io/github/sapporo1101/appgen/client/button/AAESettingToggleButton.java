@@ -28,7 +28,7 @@ public class AAESettingToggleButton<T extends Enum<T>> extends AAEIconButton {
 
     public AAESettingToggleButton(
             Setting<T> setting, T val, IHandler<AAESettingToggleButton<T>> onPress) {
-        this(setting, val, t -> true, onPress);
+        this(setting, val, _ -> true, onPress);
     }
 
     public AAESettingToggleButton(

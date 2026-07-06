@@ -1,24 +1,21 @@
 package io.github.sapporo1101.appgen.datagen;
 
-import appeng.datagen.providers.tags.ConventionTags;
+import appeng.core.ConventionTags;
 import io.github.sapporo1101.appgen.AppliedGenerators;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.util.AGTags;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
-import net.minecraft.data.tags.ItemTagsProvider;
-import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.Tags;
-import net.neoforged.neoforge.common.data.ExistingFileHelper;
+import net.neoforged.neoforge.common.data.ItemTagsProvider;
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nullable;
 import java.util.concurrent.CompletableFuture;
 
 public class AGItemTagProvider extends ItemTagsProvider {
 
-    public AGItemTagProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookupProvider, CompletableFuture<TagLookup<Block>> blockTags, @Nullable ExistingFileHelper fileHelper) {
-        super(output, lookupProvider, blockTags, AppliedGenerators.MODID, fileHelper);
+    public AGItemTagProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookupProvider) {
+        super(output, lookupProvider, AppliedGenerators.MODID);
     }
 
     @Override
@@ -49,13 +46,13 @@ public class AGItemTagProvider extends ItemTagsProvider {
                 .addTag(AGTags.SINGULARITY_GENERATORS)
                 .addTag(AGTags.FLUX_GENERATORS);
         tag(AGTags.EMBER_DUST)
-                .add(AGSingletons.EMBER_DUST);
+                .add(AGSingletons.EMBER_DUST.get());
         tag(AGTags.COPPER_DUST)
-                .add(AGSingletons.COPPER_DUST);
+                .add(AGSingletons.COPPER_DUST.get());
         tag(AGTags.GOLD_DUST)
-                .add(AGSingletons.GOLD_DUST);
+                .add(AGSingletons.GOLD_DUST.get());
         tag(AGTags.NETHERITE_DUST)
-                .add(AGSingletons.NETHERITE_DUST);
+                .add(AGSingletons.NETHERITE_DUST.get());
         tag(Tags.Items.DUSTS)
                 .addTag(AGTags.EMBER_DUST)
                 .addTag(AGTags.COPPER_DUST)
@@ -66,7 +63,7 @@ public class AGItemTagProvider extends ItemTagsProvider {
         tag(Tags.Items.STORAGE_BLOCKS)
                 .addTag(AGTags.EMBER_BLOCK);
         tag(AGTags.EMBER_CRYSTAL)
-                .add(AGSingletons.EMBER_CRYSTAL);
+                .add(AGSingletons.EMBER_CRYSTAL.get());
         tag(Tags.Items.GEMS)
                 .addTag(AGTags.EMBER_CRYSTAL);
         tag(ConventionTags.BUDDING_BLOCKS)

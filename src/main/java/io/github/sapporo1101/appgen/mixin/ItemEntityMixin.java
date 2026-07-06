@@ -36,6 +36,7 @@ public abstract class ItemEntityMixin extends Entity {
     @SuppressWarnings({"resource", "UnreachableCode"})
     @Inject(method = "tick", at = @At("RETURN"))
     private void lavaTimeout(CallbackInfo ci) {
+        //noinspection DataFlowIssue
         var self = (ItemEntity) (Object) this;
 
         if (LavaTransformLogic.canTransformInLava(self)) {

@@ -24,30 +24,32 @@ import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.CombinedInternalInventory;
 import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.filter.AEItemFilters;
-import com.glodblock.github.glodium.util.GlodUtil;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.common.blocks.SmelterBlock;
+import io.github.sapporo1101.appgen.menu.helper.DirectionSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.component.DataComponentMap;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.RecipeCraftingHolder;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -57,8 +59,8 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
     private static final int AE_PER_TICK = 20;
     private static final int STACK_SIZE = 64;
 
-    private final RecipeType<SmeltingRecipe> recipeType = RecipeType.SMELTING;
-    private final RecipeManager.CachedCheck<SingleRecipeInput, ? extends AbstractCookingRecipe> quickCheck = RecipeManager.createCheck(recipeType);
+    private final RecipeType<@NotNull SmeltingRecipe> recipeType = RecipeType.SMELTING;
+    private final RecipeManager.CachedCheck<@NotNull SingleRecipeInput, ? extends AbstractCookingRecipe> quickCheck = RecipeManager.createCheck(recipeType);
 
     private final InternalInventory inputInv = new AppEngInternalInventory(this, 1, STACK_SIZE);
     private final InternalInventory outputInv = new AppEngInternalInventory(this, 1, STACK_SIZE);
@@ -69,15 +71,15 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
     private final IUpgradeInventory upgrades = UpgradeInventories.forMachine(AGSingletons.SMELTER, 4, this::saveChanges);
     private final ConfigManager configManager = new ConfigManager(this::onConfigChanged);
 
-    private final Set<Direction> outputSides = EnumSet.noneOf(Direction.class);
+    private final DirectionSet outputSides = new DirectionSet(List.of());
 
     private boolean hasWork = false;
     private int maxProgress = 0;
     private int progress = 0;
     public boolean showWarning = false;
 
-    public SmelterBlockEntity(BlockPos pos, BlockState blockState) {
-        super(GlodUtil.getTileType(SmelterBlockEntity.class, SmelterBlockEntity::new, AGSingletons.SMELTER), pos, blockState);
+    public SmelterBlockEntity(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
+        super(blockEntityType, pos, blockState);
         this.getMainNode().setIdlePowerUsage(0).addService(IGridTickable.class, this);
         this.setInternalMaxPower(POWER_MAXIMUM_AMOUNT);
         this.configManager.registerSetting(Settings.AUTO_EXPORT, YesNo.NO);
@@ -98,12 +100,9 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
     @Override
     public void importSettings(SettingsFrom mode, DataComponentMap input, @Nullable Player player) {
         super.importSettings(mode, input, player);
-        var nbt = input.get(AGSingletons.EXTRA_SETTING);
-        if (nbt != null) {
-            this.outputSides.clear();
-            for (var side : nbt.getList("output_side", CompoundTag.TAG_STRING)) {
-                this.outputSides.add(Direction.byName(side.getAsString()));
-            }
+        var sides = input.get(AGSingletons.DIRECTION_SET);
+        if (sides != null) {
+            this.outputSides.reload(sides.asList());
         }
     }
 
@@ -111,48 +110,30 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
     public void exportSettings(SettingsFrom mode, DataComponentMap.Builder output, @Nullable Player player) {
         super.exportSettings(mode, output, player);
         if (mode == SettingsFrom.MEMORY_CARD) {
-            var nbt = new CompoundTag();
-            var sides = new ListTag();
-            for (var side : this.outputSides) {
-                sides.add(StringTag.valueOf(side.getName()));
-            }
-            nbt.put("output_side", sides);
-            output.set(AGSingletons.EXTRA_SETTING, nbt);
+            output.set(AGSingletons.DIRECTION_SET, this.outputSides);
         }
     }
 
     @Override
-    public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
-        super.saveAdditional(data, registries);
-        data.putInt("max_smelting_progress", maxProgress);
-        data.putInt("smelting_progress", progress);
-        data.putBoolean("has_smelting_work", hasWork);
-        this.upgrades.writeToNBT(data, "upgrades", registries);
-        this.configManager.writeToNBT(data, registries);
-        var sides = new ListTag();
-        for (var side : this.outputSides) {
-            sides.add(StringTag.valueOf(side.getName()));
-        }
-        data.put("output_side", sides);
+    public void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        this.upgrades.writeToNBT(output, "upgrades");
+        this.configManager.writeToNBT(output);
+        this.outputSides.save(output, "output_side");
+        output.putInt("max_smelting_progress", maxProgress);
+        output.putInt("smelting_progress", progress);
+        output.putBoolean("has_smelting_work", hasWork);
     }
 
     @Override
-    public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
-        super.loadTag(data, registries);
-        this.maxProgress = data.getInt("max_smelting_progress");
-        this.setProgress(data.getInt("smelting_progress"));
-        this.hasWork = data.getBoolean("has_smelting_work");
-        this.upgrades.readFromNBT(data, "upgrades", registries);
-        this.configManager.readFromNBT(data, registries);
-        this.outputSides.clear();
-        if (data.contains("output_side")) {
-            var list = data.getList("output_side", CompoundTag.TAG_STRING);
-            for (var name : list) {
-                this.outputSides.add(Direction.byName(name.getAsString()));
-            }
-        } else {
-            this.outputSides.addAll(List.of(Direction.values()));
-        }
+    public void loadTag(ValueInput input) {
+        super.loadTag(input);
+        this.upgrades.readFromNBT(input, "upgrades");
+        this.configManager.readFromNBT(input);
+        this.outputSides.load(input, "output_side");
+        this.maxProgress = input.getIntOr("max_smelting_progress", 0);
+        this.setProgress(input.getIntOr("smelting_progress", 0));
+        this.hasWork = input.getBooleanOr("has_smelting_work", false);
     }
 
     @Override
@@ -174,10 +155,10 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
     @Override
     public void onChangeInventory(AppEngInternalInventory inv, int slot) {
         super.onChangeInventory(inv, slot);
-        if (this.level == null) return;
+        if (!(this.level instanceof ServerLevel serverLevel)) return;
         ItemStack inputStack = this.inputInv.getStackInSlot(0);
         ItemStack outputStack = this.outputInv.getStackInSlot(0);
-        if (canSmelt(this.level.registryAccess(), getRecipeHolder(this.level, inputStack, this), inputStack, outputStack, this)) {
+        if (canSmelt(getRecipeHolder(serverLevel, inputStack, this), inputStack, outputStack, this)) {
             this.getMainNode().ifPresent((grid, node) -> grid.getTickManager().wakeDevice(node));
         }
     }
@@ -200,6 +181,8 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
 
     @Override
     public TickRateModulation tickingRequest(IGridNode node, int ticksSinceLastCall) {
+        if (!(this.level instanceof ServerLevel serverLevel)) return TickRateModulation.SAME;
+
         if (!this.getMainNode().isOnline()) {
             this.setWorking(false);
             this.saveChanges();
@@ -211,30 +194,24 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
         boolean oldHasWork = this.hasWork;
         ItemStack inputStack = this.inputInv.getStackInSlot(0);
         ItemStack outputStack = this.outputInv.getStackInSlot(0);
-        System.out.println("Smelter: tickingRequest with input " + inputStack + " and output " + outputStack);
         if (this.level == null) return TickRateModulation.SAME;
         if (!this.hasAutoExportWork() && !this.hasWork && inputStack.isEmpty()) return TickRateModulation.SLEEP;
-        System.out.println("Smelter: has input or is working");
-        RecipeHolder<?> recipeholder = getRecipeHolder(this.level, inputStack, this);
+        RecipeHolder<?> recipeholder = getRecipeHolder(serverLevel, inputStack, this);
 
-        if (!this.hasWork && canSmelt(this.level.registryAccess(), recipeholder, inputStack, outputStack, this)) {
-            System.out.println("Smelter: start working with " + inputStack + " -> " + recipeholder);
+        if (!this.hasWork && canSmelt(recipeholder, inputStack, outputStack, this)) {
             this.setWorking(true);
-            this.maxProgress = getMaxProgress(this.level, this);
+            this.maxProgress = getMaxProgress(serverLevel, this);
         }
 
-        if (this.hasWork && canSmelt(level.registryAccess(), recipeholder, inputStack, outputStack, this)) {
+        if (this.hasWork && canSmelt(recipeholder, inputStack, outputStack, this)) {
             this.getMainNode().ifPresent(grid -> useEnergy(grid, this, ticksSinceLastCall));
-            System.out.println("Smelter: working... " + this.progress + "/" + this.maxProgress);
             if (this.progress >= this.maxProgress) {
-                System.out.println("Smelter: finish working with " + inputStack + " -> " + recipeholder);
                 this.setProgress(0);
-                if (smelt(level.registryAccess(), recipeholder, inputStack, outputStack, this) && !canSmelt(level.registryAccess(), recipeholder, inputStack, outputStack, this)) {
+                if (smelt(recipeholder, inputStack, outputStack, this) && !canSmelt(recipeholder, inputStack, outputStack, this)) {
                     this.setWorking(false);
                 }
             }
         } else {
-            System.out.println("Smelter: stop working");
             this.setProgress(0);
             this.setWorking(false);
         }
@@ -242,10 +219,10 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
             this.saveChanges();
         }
         if (this.pushOutResult()) return TickRateModulation.URGENT;
-        return canSmelt(level.registryAccess(), recipeholder, inputStack, outputStack, this) ? TickRateModulation.URGENT : (this.hasAutoExportWork() ? TickRateModulation.SLOWER : TickRateModulation.SLEEP);
+        return canSmelt(recipeholder, inputStack, outputStack, this) ? TickRateModulation.URGENT : (this.hasAutoExportWork() ? TickRateModulation.SLOWER : TickRateModulation.SLEEP);
     }
 
-    private static RecipeHolder<?> getRecipeHolder(Level level, ItemStack inputStack, SmelterBlockEntity smelter) {
+    private static RecipeHolder<?> getRecipeHolder(ServerLevel level, ItemStack inputStack, SmelterBlockEntity smelter) {
         RecipeHolder<?> recipeholder;
         if (!inputStack.isEmpty()) {
             recipeholder = smelter.quickCheck.getRecipeFor(new SingleRecipeInput(inputStack), level).orElse(null);
@@ -255,9 +232,9 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
         return recipeholder;
     }
 
-    private static boolean canSmelt(RegistryAccess registryAccess, @javax.annotation.Nullable RecipeHolder<?> recipe, ItemStack inputStack, ItemStack outputStack, SmelterBlockEntity smelter) {
+    private static boolean canSmelt(@Nullable RecipeHolder<?> recipe, ItemStack inputStack, ItemStack outputStack, SmelterBlockEntity smelter) {
         if (!inputStack.isEmpty() && recipe != null) {
-            ItemStack resultStack = ((AbstractCookingRecipe) recipe.value()).assemble(new SingleRecipeInput(smelter.getInputInv().getStackInSlot(0)), registryAccess);
+            ItemStack resultStack = ((AbstractCookingRecipe) recipe.value()).assemble(new SingleRecipeInput(smelter.getInputInv().getStackInSlot(0)));
             if (resultStack.isEmpty()) {
                 return false;
             } else {
@@ -274,10 +251,9 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
         }
     }
 
-    private static boolean smelt(RegistryAccess registryAccess, @javax.annotation.Nullable RecipeHolder<?> recipe, ItemStack inputStack, ItemStack outputStack, SmelterBlockEntity smelter) {
-        System.out.println("Smelter: smelt action for " + inputStack + " -> " + recipe + ": ");
-        if (recipe != null && canSmelt(registryAccess, recipe, inputStack, outputStack, smelter)) {
-            ItemStack resultStack = ((AbstractCookingRecipe) recipe.value()).assemble(new SingleRecipeInput(inputStack), registryAccess);
+    private static boolean smelt(@Nullable RecipeHolder<?> recipe, ItemStack inputStack, ItemStack outputStack, SmelterBlockEntity smelter) {
+        if (recipe != null && canSmelt(recipe, inputStack, outputStack, smelter)) {
+            ItemStack resultStack = ((AbstractCookingRecipe) recipe.value()).assemble(new SingleRecipeInput(inputStack));
             int smeltingCount = smelter.isUpgradedWith(AGSingletons.STACK_SMELTING_CARD) ? getMaxSmeltingCount(inputStack, outputStack, resultStack) : 1;
             if (smeltingCount <= 0 || smeltingCount > inputStack.getCount()) return false;
             if (outputStack.isEmpty()) {
@@ -290,7 +266,6 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
                 return false;
             }
             inputStack.shrink(smeltingCount);
-            System.out.println("Smelter: smelted " + smeltingCount + " items.");
             smelter.inputInv.setItemDirect(0, inputStack);
             return true;
         } else {
@@ -309,6 +284,8 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
     }
 
     private static void useEnergy(IGrid grid, SmelterBlockEntity smelter, int ticks) {
+        if (!(smelter.level instanceof ServerLevel serverLevel)) return;
+
         IEnergyService eg = grid.getEnergyService();
         IEnergySource src = smelter;
 
@@ -324,7 +301,7 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
         final int progressReq = smelter.maxProgress - smelter.getProgress();
         final float powerRatio = progressReq < speedFactor ? (float) progressReq / speedFactor : 1;
         final int requiredTicks = Mth.ceil((float) smelter.maxProgress / speedFactor);
-        final int aeConsumption = Mth.floor(((float) getAePerOperation(smelter.level, smelter) / requiredTicks) * powerRatio * ticks);
+        final int aeConsumption = Mth.floor(((float) getAePerOperation(serverLevel, smelter) / requiredTicks) * powerRatio * ticks);
         final double powerThreshold = aeConsumption - 0.01;
 
         double powerReq = smelter.extractAEPower(aeConsumption, Actionable.SIMULATE, PowerMultiplier.CONFIG);
@@ -364,15 +341,15 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
     }
 
     private boolean hasAutoExportWork() {
-        return !this.outputInv.getStackInSlot(0).isEmpty() && configManager.getSetting(Settings.AUTO_EXPORT) == YesNo.YES && !this.outputSides.isEmpty();
+        return !this.outputInv.getStackInSlot(0).isEmpty() && configManager.getSetting(Settings.AUTO_EXPORT) == YesNo.YES && !this.outputSides.asSet().isEmpty();
     }
 
-    private static int getMaxProgress(Level level, SmelterBlockEntity smelter) {
+    private static int getMaxProgress(ServerLevel level, SmelterBlockEntity smelter) {
         SingleRecipeInput singlerecipeinput = new SingleRecipeInput(smelter.inputInv.getStackInSlot(0));
-        return smelter.quickCheck.getRecipeFor(singlerecipeinput, level).map((recipeHolder) -> recipeHolder.value().getCookingTime()).orElse(200);
+        return smelter.quickCheck.getRecipeFor(singlerecipeinput, level).map((recipeHolder) -> recipeHolder.value().cookingTime()).orElse(200);
     }
 
-    private static int getAePerOperation(Level level, SmelterBlockEntity smelter) {
+    private static int getAePerOperation(ServerLevel level, SmelterBlockEntity smelter) {
         return (smelter.isUpgradedWith(AGSingletons.STACK_SMELTING_CARD) ? 64 : 1) * AE_PER_TICK * getMaxProgress(level, smelter);
     }
 
@@ -401,7 +378,7 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
 
     @Nullable
     @Override
-    public InternalInventory getSubInventory(ResourceLocation id) {
+    public InternalInventory getSubInventory(Identifier id) {
         if (id.equals(ISegmentedInventory.STORAGE)) {
             return this.getInternalInventory();
         } else if (id.equals(ISegmentedInventory.UPGRADES)) {
@@ -445,16 +422,17 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
         this.progress = progress;
     }
 
-    public Set<Direction> getOutputSides() {
-        return this.outputSides;
+    private Set<Direction> getOutputSides() {
+        return this.outputSides.asSet();
+    }
+
+    public Set<Direction> getOutputSidesCopy() {
+        return new HashSet<>(this.getOutputSides());
     }
 
     public void setOutputSide(Direction side, boolean value) {
-        if (value) {
-            this.outputSides.add(side);
-        } else {
-            this.outputSides.remove(side);
-        }
+        if (value) this.getOutputSides().add(side);
+        else this.getOutputSides().remove(side);
         this.onOutputSideChanged();
     }
 
@@ -463,25 +441,32 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
             return false;
         }
 
-        for (Direction dir : outputSides) {
+        for (Direction dir : this.getOutputSides()) {
             BlockPos targetPos = this.getBlockPos().relative(dir);
-            IItemHandler itemStorage = this.level.getCapability(Capabilities.ItemHandler.BLOCK, targetPos, dir.getOpposite());
+            ResourceHandler<@NotNull ItemResource> itemStorage = this.level.getCapability(Capabilities.Item.BLOCK, targetPos, dir.getOpposite());
 
-            boolean movedStacks = false;
+            boolean sent = false;
+
+            sendItem:
             if (itemStorage != null) {
-                if (this.outputInv.getStackInSlot(0) != null && !this.outputInv.getStackInSlot(0).isEmpty()) {
-                    ItemStack remainingStack = this.outputInv.extractItem(0, 64, false);
-                    for (int i = 0; i < itemStorage.getSlots(); i++) {
-                        if (remainingStack.getCount() <= 0) break;
-                        remainingStack = itemStorage.insertItem(i, remainingStack, false);
+                int canInsert;
+                try (Transaction transaction = Transaction.openRoot()) {
+                    ItemStack sendingStack = this.outputInv.extractItem(0, 64, true);
+                    canInsert = itemStorage.insert(ItemResource.of(sendingStack), sendingStack.getCount(), transaction);
+                }
+
+                if (canInsert <= 0) break sendItem;
+
+                try (Transaction transaction = Transaction.openRoot()) {
+                    ItemStack extractedStack = this.outputInv.extractItem(0, canInsert, false);
+                    int inserted = itemStorage.insert(ItemResource.of(extractedStack), extractedStack.getCount(), transaction);
+                    if (inserted > 0) {
+                        transaction.commit();
+                        sent = true;
                     }
-                    this.outputInv.insertItem(0, remainingStack, false);
-                    movedStacks = !remainingStack.isEmpty();
                 }
             }
-
-            if (movedStacks) return true;
-
+            if (sent) return true;
         }
         return false;
     }

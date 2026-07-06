@@ -79,5 +79,5 @@
     "upgrade.appgen.singularity_generator": "Singularity Generator",
     "upgrade.appgen.flux_generator": "Flux Generator",
     "emi.category.appgen.genesis_synthesizer": "Genesis Synthesizer",
-    "emi.text.appgen.genesis_synthesizer.energy": "Used Power: %s AE"
+    "emi.text.appgen.genesis_synthesizer.energy": "%s AE"
 }

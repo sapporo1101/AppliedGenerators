@@ -6,12 +6,13 @@ import appeng.util.InteractionUtil;
 import io.github.sapporo1101.appgen.api.AGComponents;
 import io.github.sapporo1101.appgen.common.blockentities.FluxCellBaseBlockEntity;
 import io.github.sapporo1101.appgen.menu.FluxCellMenu;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemInstance;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
@@ -27,8 +28,8 @@ import java.util.List;
 
 public abstract class FluxCellBaseBlock<U extends FluxCellBaseBlockEntity> extends BlockBaseGui<U> {
 
-    public FluxCellBaseBlock() {
-        super(glassProps());
+    public FluxCellBaseBlock(Properties props) {
+        super(glassProps(props));
     }
 
     @Override
@@ -42,19 +43,11 @@ public abstract class FluxCellBaseBlock<U extends FluxCellBaseBlockEntity> exten
     }
 
     @Override
-    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
-        super.onRemove(state, level, pos, newState, isMoving);
-    }
-
-    @Override
     public @NotNull List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
-        var player = builder.getOptionalParameter(LootContextParams.THIS_ENTITY);
-        var tool = builder.getOptionalParameter(LootContextParams.TOOL);
+        Entity player = builder.getOptionalParameter(LootContextParams.THIS_ENTITY);
+        ItemInstance tool = builder.getOptionalParameter(LootContextParams.TOOL);
 
-        boolean isWrench = false;
-        if (tool != null) {
-            isWrench = InteractionUtil.canWrenchDisassemble(tool);
-        }
+        boolean isWrench = tool instanceof ItemStack toolStack && InteractionUtil.canWrenchDisassemble(toolStack);
 
         if (player instanceof Player p && p.isCreative() && !isWrench) {
             return Collections.emptyList();
@@ -67,10 +60,9 @@ public abstract class FluxCellBaseBlock<U extends FluxCellBaseBlockEntity> exten
             Level level = fluxBe.getLevel();
             if (level == null) return Collections.emptyList();
             if (!fluxBe.getGenericInv().isEmpty()) {
-                CompoundTag blockEntityTag = fluxBe.saveWithId(fluxBe.getLevel().registryAccess());
+                CompoundTag blockEntityTag = fluxBe.saveWithFullMetadata(fluxBe.getLevel().registryAccess());
                 blockEntityTag.remove("output_side");
-                drop.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(blockEntityTag));
-
+                drop.set(DataComponents.BLOCK_ENTITY_DATA, TypedEntityData.of(fluxBe.getType(), blockEntityTag));
                 drop.set(AGComponents.STORED_ENERGY, (double) fluxBe.getStoredFE());
             }
             return Collections.singletonList(drop);

@@ -17,7 +17,7 @@ import io.github.sapporo1101.appgen.menu.FluxGeneratorMenu;
 import io.github.sapporo1101.appgen.network.AGNetworkHandler;
 import io.github.sapporo1101.appgen.network.packet.CAGGenericPacket;
 import io.github.sapporo1101.appgen.util.CommaSeparator;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -31,7 +31,7 @@ public class FluxGeneratorScreen extends UpgradeableScreen<FluxGeneratorMenu> {
         super(menu, playerInventory, title, style);
         this.meExportBtn = new AAEServerSettingToggleButton<>(AAESettings.ME_EXPORT, YesNo.NO);
         this.addToLeftToolbar(meExportBtn);
-        this.outputSideBtn = new ActionEPPButton(b -> this.openOutputConfig(), EAEIcon.OUTPUT_SIDES);
+        this.outputSideBtn = new ActionEPPButton(_ -> this.openOutputConfig(), EAEIcon.OUTPUT_SIDES);
         this.outputSideBtn.setMessage(Component.translatable("gui.appgen.set_output_sides.open"));
         this.addToLeftToolbar(this.outputSideBtn);
         this.redstoneMode = new ServerSettingToggleButton<>(Settings.REDSTONE_CONTROLLED, RedstoneMode.IGNORE);
@@ -45,7 +45,7 @@ public class FluxGeneratorScreen extends UpgradeableScreen<FluxGeneratorMenu> {
                     new ItemStack(AGSingletons.SINGULARITY_GENERATOR_1K),
                     this.getMenu().getHost(),
                     this.getMenu().getOutputSides(),
-                    (side, value) -> AGNetworkHandler.INSTANCE.sendToServer(new CAGGenericPacket("set_side", side.getName(), value)))
+                    (side, value) -> AGNetworkHandler.INSTANCE.sendToServer(new CAGGenericPacket("set_side", side, value)))
             );
         }
     }
@@ -62,7 +62,7 @@ public class FluxGeneratorScreen extends UpgradeableScreen<FluxGeneratorMenu> {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        super.render(guiGraphics, mouseX, mouseY, partialTicks);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTicks);
     }
 }

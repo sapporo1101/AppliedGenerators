@@ -11,16 +11,17 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import org.jetbrains.annotations.NotNull;
 
 public class SingularityGeneratorBlock<T extends SingularityGeneratorBlockEntity> extends BlockBaseGui<T> {
     public static final BooleanProperty ACTIVE = BooleanProperty.create("active");
 
-    public SingularityGeneratorBlock() {
-        super(metalProps().strength(4.2F));
+    public SingularityGeneratorBlock(Properties props) {
+        super(metalProps(props).strength(4.2F));
         this.registerDefaultState(this.defaultBlockState().setValue(ACTIVE, false));
     }
 
-    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, @NotNull BlockState> builder) {
         super.createBlockStateDefinition(builder);
         builder.add(ACTIVE);
     }
@@ -40,32 +41,62 @@ public class SingularityGeneratorBlock<T extends SingularityGeneratorBlockEntity
     }
 
     public static class SG1k extends SingularityGeneratorBlock<SingularityGeneratorBlockEntity.SG1k> {
+        public SG1k(Properties props) {
+            super(props);
+        }
     }
 
     public static class SG4k extends SingularityGeneratorBlock<SingularityGeneratorBlockEntity.SG4k> {
+        public SG4k(Properties props) {
+            super(props);
+        }
     }
 
     public static class SG16k extends SingularityGeneratorBlock<SingularityGeneratorBlockEntity.SG16k> {
+        public SG16k(Properties props) {
+            super(props);
+        }
     }
 
     public static class SG64k extends SingularityGeneratorBlock<SingularityGeneratorBlockEntity.SG64k> {
+        public SG64k(Properties props) {
+            super(props);
+        }
     }
 
     public static class SG256k extends SingularityGeneratorBlock<SingularityGeneratorBlockEntity.SG256k> {
+        public SG256k(Properties props) {
+            super(props);
+        }
     }
 
     public static class SG1m extends SingularityGeneratorBlock<SingularityGeneratorBlockEntity.SG1m> {
+        public SG1m(Properties props) {
+            super(props);
+        }
     }
 
     public static class SG4m extends SingularityGeneratorBlock<SingularityGeneratorBlockEntity.SG4m> {
+        public SG4m(Properties props) {
+            super(props);
+        }
     }
 
     public static class SG16m extends SingularityGeneratorBlock<SingularityGeneratorBlockEntity.SG16m> {
+        public SG16m(Properties props) {
+            super(props);
+        }
     }
 
     public static class SG64m extends SingularityGeneratorBlock<SingularityGeneratorBlockEntity.SG64m> {
+        public SG64m(Properties props) {
+            super(props);
+        }
     }
 
     public static class SG256m extends SingularityGeneratorBlock<SingularityGeneratorBlockEntity.SG256m> {
+        public SG256m(Properties props) {
+            super(props);
+        }
     }
 }
