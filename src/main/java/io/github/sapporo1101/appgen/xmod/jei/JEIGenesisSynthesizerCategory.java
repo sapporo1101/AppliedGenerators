@@ -129,8 +129,8 @@ public class JEIGenesisSynthesizerCategory implements IRecipeCategory<RecipeHold
         Font font = Minecraft.getInstance().font;
         Component text = Component.translatable("emi.text.appgen.genesis_synthesizer.energy", ReadableNumberConverter.format(recipe.getEnergy(), 4));
         FormattedCharSequence formattedcharsequence = text.getVisualOrderText();
-        int textX = getWidth() / 2 + 4 - font.width(formattedcharsequence) / 2;
-        guiGraphics.text(font, text, textX, 67, 0xFF7E7E7E, false);
-        aeIcon.draw(guiGraphics, textX - 16, 65);
+        int textX = getWidth() - 20 - font.width(formattedcharsequence) / 2;
+        guiGraphics.text(font, text, textX, 57, 0xFF7E7E7E, false);
+        aeIcon.draw(guiGraphics, textX - 16, 55);
     }
 }

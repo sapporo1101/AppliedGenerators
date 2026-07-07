@@ -1,17 +1,13 @@
 package io.github.sapporo1101.appgen.common.blockentities;
 
-import appeng.api.config.Actionable;
 import appeng.api.config.YesNo;
 import appeng.api.inventories.ISegmentedInventory;
 import appeng.api.inventories.InternalInventory;
 import appeng.api.networking.GridFlags;
-import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
-import appeng.api.networking.storage.IStorageService;
 import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.networking.ticking.TickRateModulation;
 import appeng.api.networking.ticking.TickingRequest;
-import appeng.api.stacks.AEKey;
 import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.api.upgrades.UpgradeInventories;
@@ -29,10 +25,9 @@ import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.filter.AEItemDefinitionFilter;
 import appeng.util.inv.filter.IAEItemFilter;
-import com.glodblock.github.appflux.common.me.key.FluxKey;
-import com.glodblock.github.appflux.common.me.key.type.EnergyType;
 import io.github.sapporo1101.appgen.api.AAESettings;
 import io.github.sapporo1101.appgen.common.AGSingletons;
+import io.github.sapporo1101.appgen.common.blockentities.interfaces.IEnergyExtractor;
 import io.github.sapporo1101.appgen.common.blocks.SingularityGeneratorBlock;
 import io.github.sapporo1101.appgen.menu.helper.DirectionSet;
 import net.minecraft.core.BlockPos;
@@ -46,21 +41,17 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.registries.DeferredBlock;
-import net.neoforged.neoforge.transfer.energy.EnergyHandler;
-import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Set;
 
-public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBlockEntity implements IGridTickable, IUpgradeableObject, IConfigurableObject {
-    public static final @NotNull AEKey FE_KEY = FluxKey.of(EnergyType.FE);
+public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBlockEntity implements IGridTickable, IUpgradeableObject, IConfigurableObject, IEnergyExtractor {
     public static final MaterialItem SINGULARITY = AEItems.SINGULARITY.asItem();
 
-    private final AppEngInternalInventory inv = new AppEngInternalInventory(this, 1, 64, new AEItemDefinitionFilter(AEItems.SINGULARITY));
+    private final InternalInventory inv = new AppEngInternalInventory(this, 1, 64, new AEItemDefinitionFilter(AEItems.SINGULARITY));
     private final InternalInventory invExt = new FilteredInternalInventory(this.inv, new SingularitySlotFilter());
     private final IUpgradeInventory upgrades;
     private final IConfigManager configManager;
@@ -279,48 +270,13 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
     }
 
     public long sendFEToNetwork(long amount) {
-        if (this.getGridNode() == null) return 0;
-
-        IGrid grid = this.getGridNode().getGrid();
-        IStorageService storage = grid.getStorageService();
-
-        long inserted = storage.getInventory().insert(FE_KEY, amount, Actionable.MODULATE, this.source);
+        long inserted = this.sendFEToNetwork(amount, this.getGridNode(), this.source);
         this.setGeneratableFE(Math.max(0, this.getGeneratableFE() - inserted));
-
         return inserted;
     }
 
     private long sendFEToAdjacentBlock(long amount) {
-        if (this.level == null) return 0;
-
-        long sending = amount;
-        sides:
-        for (Direction dir : this.getOutputSides()) {
-            if (sending <= 0) break;
-            BlockPos targetPos = this.getBlockPos().relative(dir);
-            EnergyHandler storage = this.level.getCapability(Capabilities.Energy.BLOCK, targetPos, dir.getOpposite());
-            if (storage != null) {
-                while (sending > 0) {
-                    int canInsert;
-                    try (Transaction simulation = Transaction.openRoot()) {
-                        int batch = (int) Math.min(sending, Integer.MAX_VALUE);
-                        canInsert = storage.insert(batch, simulation);
-                    }
-
-                    if (canInsert <= 0) continue sides;
-
-                    try (Transaction transaction = Transaction.openRoot()) {
-                        int inserted = storage.insert(canInsert, transaction);
-                        if (inserted > 0) {
-                            transaction.commit();
-                            sending -= inserted;
-                        }
-                    }
-                }
-
-            }
-        }
-        return amount - sending;
+        return this.sendFEToAdjacentBlock(amount, this.outputSides.asSet(), this.worldPosition, this.level);
     }
 
     public double getLastGeneratePerTick() {

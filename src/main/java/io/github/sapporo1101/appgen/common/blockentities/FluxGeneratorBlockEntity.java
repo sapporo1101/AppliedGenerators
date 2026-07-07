@@ -1,21 +1,17 @@
 package io.github.sapporo1101.appgen.common.blockentities;
 
-import appeng.api.config.Actionable;
 import appeng.api.config.RedstoneMode;
 import appeng.api.config.Settings;
 import appeng.api.config.YesNo;
 import appeng.api.inventories.ISegmentedInventory;
 import appeng.api.inventories.InternalInventory;
 import appeng.api.networking.GridFlags;
-import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
-import appeng.api.networking.storage.IStorageService;
 import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.networking.ticking.TickRateModulation;
 import appeng.api.networking.ticking.TickingRequest;
 import appeng.api.orientation.BlockOrientation;
 import appeng.api.orientation.RelativeSide;
-import appeng.api.stacks.AEKey;
 import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.api.upgrades.UpgradeInventories;
@@ -27,10 +23,9 @@ import appeng.core.settings.TickRates;
 import appeng.me.helpers.MachineSource;
 import appeng.util.Platform;
 import appeng.util.SettingsFrom;
-import com.glodblock.github.appflux.common.me.key.FluxKey;
-import com.glodblock.github.appflux.common.me.key.type.EnergyType;
 import io.github.sapporo1101.appgen.api.AAESettings;
 import io.github.sapporo1101.appgen.common.AGSingletons;
+import io.github.sapporo1101.appgen.common.blockentities.interfaces.IEnergyExtractor;
 import io.github.sapporo1101.appgen.common.blocks.FluxGeneratorBlock;
 import io.github.sapporo1101.appgen.menu.helper.DirectionSet;
 import net.minecraft.core.BlockPos;
@@ -44,10 +39,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.registries.DeferredBlock;
-import net.neoforged.neoforge.transfer.energy.EnergyHandler;
-import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -55,9 +47,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity implements IGridTickable, IUpgradeableObject, IConfigurableObject {
-    public static final @NotNull AEKey FE_KEY = FluxKey.of(EnergyType.FE);
-
+public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity implements IGridTickable, IUpgradeableObject, IConfigurableObject, IEnergyExtractor {
     private final IUpgradeInventory upgrades;
     private final IConfigManager configManager;
     private final MachineSource source = new MachineSource(this);
@@ -214,44 +204,11 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
     }
 
     public long sendFEToNetwork(long amount) {
-        if (this.getGridNode() == null) return 0;
-
-        IGrid grid = this.getGridNode().getGrid();
-        IStorageService storage = grid.getStorageService();
-
-        return storage.getInventory().insert(FE_KEY, amount, Actionable.MODULATE, this.source);
+        return this.sendFEToNetwork(amount, this.getGridNode(), this.source);
     }
 
     private long sendFEToAdjacentBlock(long amount) {
-        if (this.level == null) return 0;
-
-        long sending = amount;
-        sides:
-        for (Direction dir : this.getOutputSides()) {
-            if (sending <= 0) break;
-            BlockPos targetPos = this.getBlockPos().relative(dir);
-            EnergyHandler storage = this.level.getCapability(Capabilities.Energy.BLOCK, targetPos, dir.getOpposite());
-            if (storage != null) {
-                while (sending > 0) {
-                    int canInsert;
-                    try (Transaction simulation = Transaction.openRoot()) {
-                        int batch = (int) Math.min(sending, Integer.MAX_VALUE);
-                        canInsert = storage.insert(batch, simulation);
-                    }
-
-                    if (canInsert <= 0) continue sides;
-
-                    try (Transaction transaction = Transaction.openRoot()) {
-                        int inserted = storage.insert(canInsert, transaction);
-                        if (inserted > 0) {
-                            transaction.commit();
-                            sending -= inserted;
-                        }
-                    }
-                }
-            }
-        }
-        return amount - sending;
+        return this.sendFEToAdjacentBlock(amount, this.outputSides.asSet(), this.getBlockPos(), this.level);
     }
 
     public void updateRedstoneState() {

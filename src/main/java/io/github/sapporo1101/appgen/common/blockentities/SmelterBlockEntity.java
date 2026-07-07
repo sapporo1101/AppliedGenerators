@@ -25,6 +25,7 @@ import appeng.util.inv.CombinedInternalInventory;
 import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.filter.AEItemFilters;
 import io.github.sapporo1101.appgen.common.AGSingletons;
+import io.github.sapporo1101.appgen.common.blockentities.interfaces.IItemExtractor;
 import io.github.sapporo1101.appgen.common.blocks.SmelterBlock;
 import io.github.sapporo1101.appgen.menu.helper.DirectionSet;
 import net.minecraft.core.BlockPos;
@@ -42,10 +43,6 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.transfer.ResourceHandler;
-import net.neoforged.neoforge.transfer.item.ItemResource;
-import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -53,7 +50,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements RecipeCraftingHolder, IGridTickable, IUpgradeableObject, IConfigurableObject {
+public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements RecipeCraftingHolder, IGridTickable, IUpgradeableObject, IConfigurableObject, IItemExtractor {
 
     private static final int POWER_MAXIMUM_AMOUNT = 10_000;
     private static final int AE_PER_TICK = 20;
@@ -218,7 +215,7 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
         if (oldMaxProgress != this.maxProgress || oldProgress != this.progress || oldHasWork != this.hasWork) {
             this.saveChanges();
         }
-        if (this.pushOutResult()) return TickRateModulation.URGENT;
+        if (this.sendStack()) return TickRateModulation.URGENT;
         return canSmelt(recipeholder, inputStack, outputStack, this) ? TickRateModulation.URGENT : (this.hasAutoExportWork() ? TickRateModulation.SLOWER : TickRateModulation.SLEEP);
     }
 
@@ -436,39 +433,10 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
         this.onOutputSideChanged();
     }
 
-    private boolean pushOutResult() {
-        if (!this.hasAutoExportWork() || this.level == null) {
-            return false;
-        }
-
-        for (Direction dir : this.getOutputSides()) {
-            BlockPos targetPos = this.getBlockPos().relative(dir);
-            ResourceHandler<@NotNull ItemResource> itemStorage = this.level.getCapability(Capabilities.Item.BLOCK, targetPos, dir.getOpposite());
-
-            boolean sent = false;
-
-            sendItem:
-            if (itemStorage != null) {
-                int canInsert;
-                try (Transaction transaction = Transaction.openRoot()) {
-                    ItemStack sendingStack = this.outputInv.extractItem(0, 64, true);
-                    canInsert = itemStorage.insert(ItemResource.of(sendingStack), sendingStack.getCount(), transaction);
-                }
-
-                if (canInsert <= 0) break sendItem;
-
-                try (Transaction transaction = Transaction.openRoot()) {
-                    ItemStack extractedStack = this.outputInv.extractItem(0, canInsert, false);
-                    int inserted = itemStorage.insert(ItemResource.of(extractedStack), extractedStack.getCount(), transaction);
-                    if (inserted > 0) {
-                        transaction.commit();
-                        sent = true;
-                    }
-                }
-            }
-            if (sent) return true;
-        }
-        return false;
+    @Override
+    public boolean sendStack() {
+        if (!this.hasAutoExportWork()) return false;
+        return this.sendItem(this.outputInv, this.getOutputSides(), this.getBlockPos(), this.level);
     }
 
     @Override

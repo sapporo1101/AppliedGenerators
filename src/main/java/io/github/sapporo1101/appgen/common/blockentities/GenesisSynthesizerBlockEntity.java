@@ -30,6 +30,7 @@ import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.filter.AEItemFilters;
 import appeng.util.inv.filter.IAEItemFilter;
 import io.github.sapporo1101.appgen.common.AGSingletons;
+import io.github.sapporo1101.appgen.common.blockentities.interfaces.IItemExtractor;
 import io.github.sapporo1101.appgen.common.blocks.GenesisSynthesizerBlock;
 import io.github.sapporo1101.appgen.menu.helper.DirectionSet;
 import io.github.sapporo1101.appgen.recipe.GenesisSynthesizerRecipe;
@@ -48,26 +49,20 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.transfer.ResourceHandler;
-import net.neoforged.neoforge.transfer.fluid.FluidResource;
-import net.neoforged.neoforge.transfer.item.ItemResource;
-import net.neoforged.neoforge.transfer.transaction.Transaction;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity implements IGridTickable, IUpgradeableObject, IConfigurableObject {
+public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity implements IGridTickable, IUpgradeableObject, IConfigurableObject, IItemExtractor {
 
     public static final long POWER_MAXIMUM_AMOUNT = 10_000_000;
     public static final int MAX_PROGRESS = 200;
     public static final int MAX_CRYSTAL_TANK = 1000;
 
-    private final AppEngInternalInventory inputInv = new AppEngInternalInventory(this, 9, 64, new RestrictItemFilter(AGSingletons.EMBER_CRYSTAL_CHARGED.get()));
-    private final AppEngInternalInventory crystalInv = new AppEngInternalInventory(this, 1, 64, new AllowItemFilter(AGSingletons.EMBER_CRYSTAL_CHARGED.get()));
-    private final AppEngInternalInventory outputInv = new AppEngInternalInventory(this, 1, 64);
+    private final InternalInventory inputInv = new AppEngInternalInventory(this, 9, 64, new RestrictItemFilter(AGSingletons.EMBER_CRYSTAL_CHARGED.get()));
+    private final InternalInventory crystalInv = new AppEngInternalInventory(this, 1, 64, new AllowItemFilter(AGSingletons.EMBER_CRYSTAL_CHARGED.get()));
+    private final InternalInventory outputInv = new AppEngInternalInventory(this, 1, 64);
     private final InternalInventory combinedInputInv = new CombinedInternalInventory(this.inputInv, this.crystalInv);
     private final InternalInventory inv = new CombinedInternalInventory(this.combinedInputInv, this.outputInv);
     private final FilteredInternalInventory combinedInputExposed = new FilteredInternalInventory(this.combinedInputInv, AEItemFilters.INSERT_ONLY);
@@ -455,7 +450,7 @@ public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity
             this.showWarning = false;
         }
 
-        if (this.pushOutResult()) {
+        if (this.sendStack()) {
             return TickRateModulation.URGENT;
         }
 
@@ -488,70 +483,16 @@ public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity
         return this.isWorking();
     }
 
-    private boolean pushOutResult() {
-        if (!this.hasAutoExportWork() || this.level == null) {
-            return false;
-        }
-
-        for (Direction dir : this.getOutputSides()) {
-            BlockPos targetPos = this.getBlockPos().relative(dir);
-            ResourceHandler<@NotNull ItemResource> itemStorage = this.level.getCapability(Capabilities.Item.BLOCK, targetPos, dir.getOpposite());
-            ResourceHandler<@NotNull FluidResource> fluidStorage = this.level.getCapability(Capabilities.Fluid.BLOCK, targetPos, dir.getOpposite());
-
-            boolean sent = false;
-
-            sendItem:
-            if (itemStorage != null) {
-                int canInsert;
-                try (Transaction transaction = Transaction.openRoot()) {
-                    ItemStack sendingStack = this.outputInv.extractItem(0, 64, true);
-                    canInsert = itemStorage.insert(ItemResource.of(sendingStack), sendingStack.getCount(), transaction);
-                }
-
-                if (canInsert <= 0) break sendItem;
-
-                try (Transaction transaction = Transaction.openRoot()) {
-                    ItemStack extractedStack = this.outputInv.extractItem(0, canInsert, false);
-                    int inserted = itemStorage.insert(ItemResource.of(extractedStack), extractedStack.getCount(), transaction);
-                    if (inserted > 0) {
-                        transaction.commit();
-                        sent = true;
-                    }
-                }
-            }
-
-            sendFluid:
-            if (fluidStorage != null) {
-                var outFluid = this.tankInv.getStack(1);
-                var fluidKey = outFluid != null ? outFluid.what() : null;
-                if (outFluid == null || fluidKey == null) break sendFluid;
-                int canInsert;
-                try (Transaction transaction = Transaction.openRoot()) {
-                    FluidStack sendingStack = ((AEFluidKey) fluidKey).toStack((int) outFluid.amount());
-                    canInsert = fluidStorage.insert(FluidResource.of(sendingStack), sendingStack.getAmount(), transaction);
-                }
-
-                if (canInsert <= 0) break sendFluid;
-
-                try (Transaction transaction = Transaction.openRoot()) {
-                    var extractedAmount = this.tankInv.extract(1, fluidKey, canInsert, Actionable.MODULATE);
-                    FluidStack extractedStack = ((AEFluidKey) fluidKey).toStack((int) extractedAmount);
-                    int inserted = fluidStorage.insert(FluidResource.of(extractedStack), extractedStack.getAmount(), transaction);
-                    if (inserted > 0) {
-                        transaction.commit();
-                        sent = true;
-                    }
-                }
-            }
-            if (sent) return true;
-        }
-        return false;
+    @Override
+    public boolean sendStack() {
+        if (!this.hasAutoExportWork()) return false;
+        return this.sendItem(this.outputInv, this.getOutputSides(), this.getBlockPos(), this.level)
+                || this.sendFluid(this.tankInv, this.getOutputSides(), this.getBlockPos(), this.level);
     }
 
     @Nullable
     public GenesisSynthesizerRecipe getTask() {
         if (this.cachedTask == null && level != null) {
-
             this.cachedTask = findRecipe(level);
         }
         return this.cachedTask;
