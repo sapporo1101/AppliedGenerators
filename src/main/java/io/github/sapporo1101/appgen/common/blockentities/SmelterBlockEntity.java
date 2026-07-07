@@ -211,30 +211,24 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
         boolean oldHasWork = this.hasWork;
         ItemStack inputStack = this.inputInv.getStackInSlot(0);
         ItemStack outputStack = this.outputInv.getStackInSlot(0);
-        System.out.println("Smelter: tickingRequest with input " + inputStack + " and output " + outputStack);
         if (this.level == null) return TickRateModulation.SAME;
         if (!this.hasAutoExportWork() && !this.hasWork && inputStack.isEmpty()) return TickRateModulation.SLEEP;
-        System.out.println("Smelter: has input or is working");
         RecipeHolder<?> recipeholder = getRecipeHolder(this.level, inputStack, this);
 
         if (!this.hasWork && canSmelt(this.level.registryAccess(), recipeholder, inputStack, outputStack, this)) {
-            System.out.println("Smelter: start working with " + inputStack + " -> " + recipeholder);
             this.setWorking(true);
             this.maxProgress = getMaxProgress(this.level, this);
         }
 
         if (this.hasWork && canSmelt(level.registryAccess(), recipeholder, inputStack, outputStack, this)) {
             this.getMainNode().ifPresent(grid -> useEnergy(grid, this, ticksSinceLastCall));
-            System.out.println("Smelter: working... " + this.progress + "/" + this.maxProgress);
             if (this.progress >= this.maxProgress) {
-                System.out.println("Smelter: finish working with " + inputStack + " -> " + recipeholder);
                 this.setProgress(0);
                 if (smelt(level.registryAccess(), recipeholder, inputStack, outputStack, this) && !canSmelt(level.registryAccess(), recipeholder, inputStack, outputStack, this)) {
                     this.setWorking(false);
                 }
             }
         } else {
-            System.out.println("Smelter: stop working");
             this.setProgress(0);
             this.setWorking(false);
         }
@@ -275,7 +269,6 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
     }
 
     private static boolean smelt(RegistryAccess registryAccess, @javax.annotation.Nullable RecipeHolder<?> recipe, ItemStack inputStack, ItemStack outputStack, SmelterBlockEntity smelter) {
-        System.out.println("Smelter: smelt action for " + inputStack + " -> " + recipe + ": ");
         if (recipe != null && canSmelt(registryAccess, recipe, inputStack, outputStack, smelter)) {
             ItemStack resultStack = ((AbstractCookingRecipe) recipe.value()).assemble(new SingleRecipeInput(inputStack), registryAccess);
             int smeltingCount = smelter.isUpgradedWith(AGSingletons.STACK_SMELTING_CARD) ? getMaxSmeltingCount(inputStack, outputStack, resultStack) : 1;
@@ -290,7 +283,6 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
                 return false;
             }
             inputStack.shrink(smeltingCount);
-            System.out.println("Smelter: smelted " + smeltingCount + " items.");
             smelter.inputInv.setItemDirect(0, inputStack);
             return true;
         } else {
