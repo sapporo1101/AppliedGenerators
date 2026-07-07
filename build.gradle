@@ -5,6 +5,11 @@ plugins {
     id 'net.neoforged.moddev'
 }
 
+def gitTagProvider = providers.exec {
+    commandLine 'git', 'describe', '--tags', '--abbrev=0'
+}.standardOutput.asText.map { it.trim() }
+
+def mod_version = gitTagProvider.get().replaceFirst('^v', '')
 version = mod_version
 group = mod_group_id
 
@@ -125,4 +130,9 @@ idea {
         downloadSources = true
         downloadJavadoc = true
     }
+}
+
+jar {
+    archiveBaseName.set("${mod_file_name}")
+    archiveVersion.set("${mod_version}+${minecraft_version}")
 }
