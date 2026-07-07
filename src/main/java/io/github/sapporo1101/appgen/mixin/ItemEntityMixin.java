@@ -26,7 +26,7 @@ public abstract class ItemEntityMixin extends Entity {
     private boolean appgen$lavaImmune;
 
     @Unique
-    private int appgen$lavaTicks;
+    private int appgen$lavaTicks = 0;
 
     @ModifyReturnValue(method = "fireImmune", at = @At("RETURN"))
     private boolean lavaImmune(boolean original) {
@@ -46,12 +46,12 @@ public abstract class ItemEntityMixin extends Entity {
             var state = level().getFluidState(new BlockPos(x, y, z));
 
             if (state.is(FluidTags.LAVA)) {
-                appgen$lavaImmune = appgen$lavaTicks <= 200;
-
                 if (appgen$lavaTicks++ > 200 && LavaTransformLogic.allIngredientsPresent(self)) {
                     appgen$lavaTicks = 0;
                 }
             }
+
+            appgen$lavaImmune = appgen$lavaTicks <= 200;
         }
     }
 }
