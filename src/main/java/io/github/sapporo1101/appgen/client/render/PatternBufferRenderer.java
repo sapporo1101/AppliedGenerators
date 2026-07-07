@@ -56,13 +56,6 @@ public class PatternBufferRenderer implements BlockEntityRenderer<@NotNull Patte
     public void submit(PatternBufferRenderState state, PoseStack poseStack, @NotNull SubmitNodeCollector submitNodeCollector, @NotNull CameraRenderState cameraRenderState) {
         poseStack.pushPose();
         poseStack.translate(0.5, 0.5, 0.5);
-
-        if (!state.blockItem) {
-            poseStack.translate(0, -0.15, 0);
-        } else {
-            poseStack.translate(0, -0.2, 0);
-        }
-
         state.item.submit(poseStack, submitNodeCollector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
         poseStack.popPose();
     }
