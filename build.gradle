@@ -60,16 +60,16 @@ neoForge {
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
-    implementation "org.appliedenergistics:appliedenergistics2:26.1.9-alpha"
+    implementation "org.appliedenergistics:appliedenergistics2:26.1.10-beta"
     implementation "org.appliedenergistics:guideme:26.1.12-beta"
     implementation "curse.maven:glodium-957920:8196173"
     implementation "curse.maven:applied-flux-965012:8246560"
     implementation "curse.maven:ex-pattern-provider-892005:8237330"
-    implementation "curse.maven:geckolib-388172:7913641"
-    implementation "curse.maven:advancedae-1084104:8236325"
-    implementation "maven.modrinth:jade:26.1.1+neoforge"
+    implementation "curse.maven:geckolib-388172:8327201"
+    implementation "curse.maven:advancedae-1084104:8383853"
+    implementation "maven.modrinth:jade:26.1.8+neoforge"
     compileOnly "me.shedaniel:RoughlyEnoughItems-neoforge:26.1.819"
-    compileOnly "mezz.jei:jei-26.1.2-neoforge:29.6.2.38"
+    compileOnly "mezz.jei:jei-26.1.2-neoforge:29.12.0.41"
 
     switch (use_Xei) {
         case "emi":
@@ -80,7 +80,7 @@ dependencies {
             runtimeOnly "curse.maven:cloth-config-348521:7817583"
             break
         case "jei":
-            runtimeOnly "mezz.jei:jei-26.1.2-neoforge:29.6.2.38"
+            runtimeOnly "mezz.jei:jei-26.1.2-neoforge:29.12.0.41"
     }
 
 }
