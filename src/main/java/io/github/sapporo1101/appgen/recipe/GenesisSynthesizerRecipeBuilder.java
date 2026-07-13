@@ -55,12 +55,8 @@ public class GenesisSynthesizerRecipeBuilder {
         return new GenesisSynthesizerRecipeBuilder(null, Objects.requireNonNull(fluidStackOutput), energy, itemGetter, fluidGetter);
     }
 
-    public static GenesisSynthesizerRecipeBuilder synthesize(Fluid fluidOutput, long energy, HolderGetter<Item> itemGetter, HolderGetter<Fluid> fluidGetter) {
-        return synthesize(new FluidStackTemplate(fluidOutput, 1000), energy, itemGetter, fluidGetter);
-    }
-
-    public static GenesisSynthesizerRecipeBuilder synthesize(Fluid fluidOutput, int count, long energy, HolderGetter<Item> itemGetter, HolderGetter<Fluid> fluidGetter) {
-        return synthesize(new FluidStackTemplate(fluidOutput, count), energy, itemGetter, fluidGetter);
+    public static GenesisSynthesizerRecipeBuilder synthesize(Fluid fluidOutput, int amount, long energy, HolderGetter<Item> itemGetter, HolderGetter<Fluid> fluidGetter) {
+        return synthesize(new FluidStackTemplate(fluidOutput, amount), energy, itemGetter, fluidGetter);
     }
 
     public GenesisSynthesizerRecipeBuilder fluid(FluidStack fluid) {

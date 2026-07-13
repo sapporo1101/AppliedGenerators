@@ -674,8 +674,16 @@ public class AGRecipeProvider extends RecipeProvider {
                 .input(AEItems.SKY_DUST)
                 .input(AEItems.SILICON)
                 .input(Items.SLIME_BALL)
-                .fluid(Fluids.WATER, 1000)
+                .fluid(Fluids.WATER, 100)
                 .save(this.output, AppliedGenerators.id("synthesizer/insulating_resin"));
+        // Insulating Resin (Duplicate)
+        GenesisSynthesizerRecipeBuilder.synthesize(AFSingletons.INSULATING_RESIN, 64, 1000000, this.items, this.fluids)
+                .input(AGSingletons.EMBER_CRYSTAL_CHARGED, 4)
+                .input(AFSingletons.INSULATING_RESIN, 32)
+                .input(AEItems.SILICON, 32)
+                .input(AEItems.SKY_DUST, 32)
+                .fluid(Fluids.WATER, 10000)
+                .save(this.output, AppliedGenerators.id("synthesizer/insulating_resin_duplicate"));
         // Fluix ME Covered Cable
         GenesisSynthesizerRecipeBuilder.synthesize(AEParts.COVERED_CABLE.item(AEColor.TRANSPARENT), 16, 10000, this.items, this.fluids)
                 .input(AGSingletons.EMBER_CRYSTAL_CHARGED, 1)
@@ -704,7 +712,24 @@ public class AGRecipeProvider extends RecipeProvider {
                 .input(Items.NETHERITE_BLOCK)
                 .fluid(Fluids.LAVA, 5000)
                 .save(this.output, AppliedGenerators.id("synthesizer/stack_smelting_card"));
-
+        // Singularity
+        GenesisSynthesizerRecipeBuilder.synthesize(AEItems.SINGULARITY, 1, 1000000, this.items, this.fluids)
+                .input(AEItems.MATTER_BALL, 64)
+                .fluid(Fluids.LAVA, 100)
+                .save(this.output, AppliedGenerators.id("synthesizer/singularity"));
+        // Singularity (Duplicate)
+        GenesisSynthesizerRecipeBuilder.synthesize(AEItems.SINGULARITY, 2, 10000000, this.items, this.fluids)
+                .input(AGSingletons.EMBER_CRYSTAL_CHARGED, 24)
+                .input(AEItems.SINGULARITY)
+                .fluid(Fluids.LAVA, 1000)
+                .save(this.output, AppliedGenerators.id("synthesizer/singularity_duplicate"));
+        // Lava
+        GenesisSynthesizerRecipeBuilder.synthesize(Fluids.LAVA, 1000, 100000, this.items, this.fluids)
+                .input(AGSingletons.EMBER_CRYSTAL_CHARGED, 4)
+                .input(AGSingletons.EMBER_DUST, 4)
+                .input(AEItems.FLUIX_DUST, 4)
+                .fluid(Fluids.WATER, 1000)
+                .save(this.output, AppliedGenerators.id("synthesizer/lava"));
 
         // World Transformation Recipes
         // Ember Crystal (Duplicate)

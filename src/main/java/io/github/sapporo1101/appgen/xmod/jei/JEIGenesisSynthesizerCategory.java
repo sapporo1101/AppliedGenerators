@@ -122,7 +122,9 @@ public class JEIGenesisSynthesizerCategory implements IRecipeCategory<RecipeHold
         this.background.draw(guiGraphics);
         this.progress.draw(guiGraphics, 135, 27 - 1);
 
-        int crystalAmount = recipe.getItemInputs().stream().filter(item -> item.getIngredient().test(new ItemStack(AGSingletons.EMBER_CRYSTAL_CHARGED.get()))).toList().getLast().getAmount();
+        int crystalAmount = recipe.getItemInputs().stream().filter(
+                item -> item.getIngredient().test(new ItemStack(AGSingletons.EMBER_CRYSTAL_CHARGED.get()))
+        ).toList().stream().findFirst().map(IngredientStack.Item::getAmount).orElse(0);
         int crystalHeight = 18 * crystalAmount / GenesisSynthesizerBlockEntity.MAX_CRYSTAL_TANK;
         guiGraphics.blit(BACKGROUND, 88, 9 + Math.max(18 - crystalHeight, 0) - 1, 182, Math.max(18 - crystalHeight, 0), 6, 18, 0, 0);
 
