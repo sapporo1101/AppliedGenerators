@@ -17,7 +17,7 @@ import java.util.Collections;
 import java.util.List;
 
 @SuppressWarnings("unused")
-public abstract class AAEIconButton extends Button implements ITooltip {
+public abstract class AGIconButton extends Button implements ITooltip {
 
     private boolean halfSize = false;
 
@@ -27,7 +27,7 @@ public abstract class AAEIconButton extends Button implements ITooltip {
 
     private boolean enableHoverOffset = true;
 
-    public AAEIconButton(OnPress onPress) {
+    public AGIconButton(OnPress onPress) {
         super(0, 0, 16, 16, Component.empty(), onPress, Button.DEFAULT_NARRATION);
     }
 
@@ -97,7 +97,7 @@ public abstract class AAEIconButton extends Button implements ITooltip {
         }
     }
 
-    protected abstract AAEIcon getIcon();
+    protected abstract AGIcon getIcon();
 
     /**
      * Prioritized over {@link #getIcon()} if not null.

@@ -12,6 +12,8 @@ import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.api.upgrades.MachineUpgradesChanged;
 import appeng.api.upgrades.Upgrades;
+import appeng.api.util.IConfigManager;
+import appeng.api.util.IConfigurableObject;
 import appeng.blockentity.AEBaseBlockEntity;
 import appeng.core.definitions.AEItems;
 import appeng.helpers.externalstorage.GenericStackInv;
@@ -19,6 +21,8 @@ import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.glodblock.github.appflux.common.AFSingletons;
+import io.github.sapporo1101.appgen.api.AGSettings;
+import io.github.sapporo1101.appgen.api.KeepSignalMode;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.xmod.ExternalTypes;
 import it.unimi.dsi.fastutil.objects.Reference2IntArrayMap;
@@ -26,7 +30,6 @@ import it.unimi.dsi.fastutil.objects.Reference2IntMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
@@ -45,16 +48,19 @@ import java.util.List;
 
 import static io.github.sapporo1101.appgen.common.blocks.PatternBufferBlock.POWERED;
 
-public class PatternBufferBlockEntity extends AEBaseBlockEntity implements InternalInventoryHost, IUpgradeableObject {
-
+public class PatternBufferBlockEntity extends AEBaseBlockEntity implements InternalInventoryHost, IUpgradeableObject, IConfigurableObject {
     private final PatternBufferInv storageInv = new PatternBufferInv(this::onStorageChanged, 36);
     private final AppEngInternalInventory patternInv = new AppEngInternalInventory(this, 1);
     private final IUpgradeInventory upgrades = new PatternBufferUpgradeInventory(AGSingletons.PATTERN_BUFFER, 5, this::onUpgradeChanged);
+    private final IConfigManager configManager;
 
     private final PatternInput patternInput = new PatternInput();
 
+    private boolean lastSatisfied = false;
+
     public PatternBufferBlockEntity(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
         super(blockEntityType, pos, blockState);
+        this.configManager = IConfigManager.builder(this::onConfigChanged).registerSetting(AGSettings.KEEP_SIGNAL, KeepSignalMode.OFF).build();
     }
 
     private void onStorageChanged() {
@@ -115,7 +121,12 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         this.patternInv.readFromNBT(input, "pattern_inv");
         this.upgrades.readFromNBT(input, "upgrades");
         this.patternInput.readFromChildTag(input, "pattern");
-        this.updateCapacity(); // update capacity after loading
+    }
+
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        this.updateCapacity();
     }
 
     @Override
@@ -174,13 +185,33 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         }
     }
 
+    private void onConfigChanged() {
+        this.updateRedstoneState();
+        this.saveChanges();
+    }
+
     private void updateRedstoneState() {
+        this.updateLastSatisfied();
+        boolean keepSignal = this.configManager.getSetting(AGSettings.KEEP_SIGNAL) != KeepSignalMode.OFF;
         boolean powered = this.getBlockState().getValue(POWERED);
-        boolean newPowered = this.upgrades.isInstalled(AEItems.REDSTONE_CARD) && this.patternInput.isRecipeSatisfied();
+        boolean newPowered = this.upgrades.isInstalled(AEItems.REDSTONE_CARD)
+                && (!keepSignal && this.patternInput.isRecipeSatisfied() || keepSignal && this.lastSatisfied);
         if (this.level != null && powered != newPowered) {
             this.level.setBlockAndUpdate(this.getBlockPos(), this.level.getBlockState(this.getBlockPos()).setValue(POWERED, newPowered));
             this.level.updateNeighborsAt(this.getBlockPos(), this.getBlockState().getBlock());
         }
+    }
+
+    private void updateLastSatisfied() {
+        boolean storageEmpty = this.storageInv.invs.stream().allMatch(GenericStackInv::isEmpty);
+        boolean redstoneCardInstalled = this.upgrades.isInstalled(AEItems.REDSTONE_CARD);
+        if (storageEmpty || !redstoneCardInstalled) this.lastSatisfied = false;
+        boolean currentSatisfied = this.patternInput.isRecipeSatisfied();
+        if (currentSatisfied) this.lastSatisfied = true;
+    }
+
+    private boolean isStorageLocked() {
+        return this.configManager.getSetting(AGSettings.KEEP_SIGNAL) == KeepSignalMode.LOCKED && this.lastSatisfied;
     }
 
     public PatternBufferInv getStorageInv() {
@@ -207,6 +238,11 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         IPatternDetails patternDetails = PatternDetailsHelper.decodePattern(patternStack, this.level);
         if (patternDetails == null || patternDetails.getOutputs().isEmpty()) return null;
         return patternDetails.getPrimaryOutput().what();
+    }
+
+    @Override
+    public IConfigManager getConfigManager() {
+        return this.configManager;
     }
 
     @SuppressWarnings("UnstableApiUsage")
@@ -243,7 +279,7 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
 
         @Override
         public long getMaxAmount(AEKey aeKey) {
-            return (long) Math.ceil((double) this.invs.stream().mapToLong(inv -> inv.getCapacity(aeKey.getType()) * this.isValidKey(inv, aeKey)).sum() / this.invs.size());
+            return this.invs.stream().mapToLong(inv -> inv.getCapacity(aeKey.getType()) * isValidKey(inv, aeKey)).max().orElse(0);
         }
 
         private int isValidKey(GenericStackInv inv, AEKey aeKey) {
@@ -266,7 +302,7 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
 
         @Override
         public long getCapacity(AEKeyType aeKeyType) {
-            return (long) Math.ceil((double) this.invs.stream().mapToLong(inv -> inv.getCapacity(aeKeyType)).sum() / this.invs.size());
+            return this.invs.stream().mapToLong(inv -> inv.getCapacity(aeKeyType)).max().orElse(0);
         }
 
         public void setCapacity(int slot, AEKeyType aeKeyType, long capacity) {
@@ -277,12 +313,12 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
 
         @Override
         public boolean canInsert() {
-            return true;
+            return !isStorageLocked();
         }
 
         @Override
         public boolean canExtract() {
-            return true;
+            return configManager.getSetting(AGSettings.KEEP_SIGNAL) != KeepSignalMode.LOCKED || lastSatisfied;
         }
 
         @Override
@@ -354,6 +390,11 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         @Override
         public boolean isAllowedIn(int slot, AEKey what) {
             return isValidKey(this.index, what);
+        }
+
+        @Override
+        public boolean isSupportedType(AEKeyType type) {
+            return this.getCapacity(type) > 0;
         }
     }
 
@@ -532,19 +573,6 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
 
     @Override
     public @NotNull CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        CompoundTag data = super.getUpdateTag(registries);
-        InternalInventory pattern = this.getPatternInv();
-        if (pattern != InternalInventory.empty()) {
-            final CompoundTag opt = new CompoundTag();
-            ItemStack patternStack = pattern.getStackInSlot(0);
-            ItemStack.OPTIONAL_CODEC.encodeStart(
-                            registries.createSerializationContext(NbtOps.INSTANCE), patternStack)
-                    .ifSuccess(tag -> opt.put("item", tag)
-                    );
-            data.put("inv", opt);
-        }
-        return data;
+        return this.saveWithoutMetadata(registries);
     }
-
-
 }

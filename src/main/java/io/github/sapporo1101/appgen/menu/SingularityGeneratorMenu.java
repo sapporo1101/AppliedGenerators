@@ -11,7 +11,7 @@ import appeng.menu.slot.AppEngSlot;
 import com.glodblock.github.glodium.network.packet.sync.ActionMap;
 import com.glodblock.github.glodium.network.packet.sync.IActionHolder;
 import io.github.sapporo1101.appgen.AppliedGenerators;
-import io.github.sapporo1101.appgen.api.AAESettings;
+import io.github.sapporo1101.appgen.api.AGSettings;
 import io.github.sapporo1101.appgen.common.blockentities.SingularityGeneratorBlockEntity;
 import io.github.sapporo1101.appgen.menu.helper.DirectionSet;
 import net.minecraft.core.Direction;
@@ -58,7 +58,7 @@ public class SingularityGeneratorMenu extends UpgradeableMenu<SingularityGenerat
 
     @Override
     protected void loadSettingsFromHost(IConfigManager cm) {
-        this.meExport = this.getHost().getConfigManager().getSetting(AAESettings.ME_EXPORT);
+        this.meExport = this.getHost().getConfigManager().getSetting(AGSettings.ME_EXPORT);
         this.outputSides.reload(this.getHost().getOutputSides());
     }
 

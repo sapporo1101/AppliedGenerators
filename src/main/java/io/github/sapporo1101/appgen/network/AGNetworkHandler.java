@@ -3,7 +3,7 @@ package io.github.sapporo1101.appgen.network;
 import appeng.core.network.ServerboundPacket;
 import com.glodblock.github.glodium.network.NetworkHandler;
 import io.github.sapporo1101.appgen.AppliedGenerators;
-import io.github.sapporo1101.appgen.network.packet.AAEConfigButtonPacket;
+import io.github.sapporo1101.appgen.network.packet.AGConfigButtonPacket;
 import io.github.sapporo1101.appgen.network.packet.CAGGenericPacket;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -25,7 +25,7 @@ public class AGNetworkHandler extends NetworkHandler {
     public void onRegister(RegisterPayloadHandlersEvent event) {
         super.onRegister(event);
 
-        serverbound(this.registrar, AAEConfigButtonPacket.TYPE, AAEConfigButtonPacket.STREAM_CODEC);
+        serverbound(this.registrar, AGConfigButtonPacket.TYPE, AGConfigButtonPacket.STREAM_CODEC);
     }
 
     @SuppressWarnings("SameParameterValue")

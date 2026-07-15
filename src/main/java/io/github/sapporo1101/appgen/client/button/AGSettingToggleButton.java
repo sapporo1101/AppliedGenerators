@@ -4,7 +4,8 @@ import appeng.api.config.Setting;
 import appeng.api.config.YesNo;
 import appeng.client.gui.AEBaseScreen;
 import appeng.core.localization.ButtonToolTips;
-import io.github.sapporo1101.appgen.api.AAESettings;
+import io.github.sapporo1101.appgen.api.AGSettings;
+import io.github.sapporo1101.appgen.api.KeepSignalMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -15,28 +16,28 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.function.Predicate;
 
-public class AAESettingToggleButton<T extends Enum<T>> extends AAEIconButton {
+public class AGSettingToggleButton<T extends Enum<T>> extends AGIconButton {
     private static Map<EnumPair<?>, ButtonAppearance> appearances;
     private final Setting<T> buttonSetting;
-    private final IHandler<AAESettingToggleButton<T>> onPress;
+    private final IHandler<AGSettingToggleButton<T>> onPress;
     private T currentValue;
 
     @FunctionalInterface
-    public interface IHandler<T extends AAESettingToggleButton<?>> {
+    public interface IHandler<T extends AGSettingToggleButton<?>> {
         void handle(T button, boolean backwards);
     }
 
-    public AAESettingToggleButton(
-            Setting<T> setting, T val, IHandler<AAESettingToggleButton<T>> onPress) {
+    public AGSettingToggleButton(
+            Setting<T> setting, T val, IHandler<AGSettingToggleButton<T>> onPress) {
         this(setting, val, _ -> true, onPress);
     }
 
-    public AAESettingToggleButton(
+    public AGSettingToggleButton(
             Setting<T> setting,
             T val,
             Predicate<T> isValidValue,
-            IHandler<AAESettingToggleButton<T>> onPress) {
-        super(AAESettingToggleButton::onPress);
+            IHandler<AGSettingToggleButton<T>> onPress) {
+        super(AGSettingToggleButton::onPress);
         this.onPress = onPress;
 
         // Build a list of values (in order) that are valid w.r.t. the given predicate
@@ -48,16 +49,18 @@ public class AAESettingToggleButton<T extends Enum<T>> extends AAEIconButton {
         this.currentValue = val;
 
         if (appearances == null) {
-
             appearances = new HashMap<>();
-            registerApp(AAEIcon.ME_EXPORT_ON, AAESettings.ME_EXPORT, YesNo.YES, Component.translatable("gui.appgen.me_export"), Component.translatable("gui.appgen.me_export.on"));
-            registerApp(AAEIcon.ME_EXPORT_OFF, AAESettings.ME_EXPORT, YesNo.NO, Component.translatable("gui.appgen.me_export"), Component.translatable("gui.appgen.me_export.off"));
+            registerApp(AGIcon.ME_EXPORT_ON, AGSettings.ME_EXPORT, YesNo.YES, Component.translatable("gui.appgen.me_export"), Component.translatable("gui.appgen.me_export.on"));
+            registerApp(AGIcon.ME_EXPORT_OFF, AGSettings.ME_EXPORT, YesNo.NO, Component.translatable("gui.appgen.me_export"), Component.translatable("gui.appgen.me_export.off"));
+            registerApp(AGIcon.KEEP_SIGNAL_ON, AGSettings.KEEP_SIGNAL, KeepSignalMode.ON, Component.translatable("gui.appgen.keep_signal"), Component.translatable("gui.appgen.keep_signal.on"));
+            registerApp(AGIcon.KEEP_SIGNAL_OFF, AGSettings.KEEP_SIGNAL, KeepSignalMode.OFF, Component.translatable("gui.appgen.keep_signal"), Component.translatable("gui.appgen.keep_signal.off"));
+            registerApp(AGIcon.KEEP_SIGNAL_LOCKED, AGSettings.KEEP_SIGNAL, KeepSignalMode.LOCKED, Component.translatable("gui.appgen.keep_signal"), Component.translatable("gui.appgen.keep_signal.locked"));
         }
     }
 
     private static void onPress(Button btn) {
-        if (btn instanceof AAESettingToggleButton) {
-            ((AAESettingToggleButton<?>) btn).triggerPress();
+        if (btn instanceof AGSettingToggleButton) {
+            ((AGSettingToggleButton<?>) btn).triggerPress();
         }
     }
 
@@ -74,7 +77,7 @@ public class AAESettingToggleButton<T extends Enum<T>> extends AAEIconButton {
 
     @SuppressWarnings("SameParameterValue")
     private static <T extends Enum<T>> void registerApp(
-            AAEIcon icon, Setting<T> setting, T val, Component... tooltipLines) {
+            AGIcon icon, Setting<T> setting, T val, Component... tooltipLines) {
         var lines = new ArrayList<Component>();
         Collections.addAll(lines, tooltipLines);
         appearances.put(
@@ -83,7 +86,7 @@ public class AAESettingToggleButton<T extends Enum<T>> extends AAEIconButton {
     }
 
     @Nullable
-    private AAESettingToggleButton.ButtonAppearance getAppearance() {
+    private AGSettingToggleButton.ButtonAppearance getAppearance() {
         if (this.buttonSetting != null && this.currentValue != null) {
             return appearances.get(new EnumPair<>(this.buttonSetting, this.currentValue));
         }
@@ -91,12 +94,12 @@ public class AAESettingToggleButton<T extends Enum<T>> extends AAEIconButton {
     }
 
     @Override
-    protected AAEIcon getIcon() {
+    protected AGIcon getIcon() {
         var app = getAppearance();
         if (app != null && app.icon != null) {
             return app.icon;
         }
-        return AAEIcon.TOOLBAR_BUTTON_BACKGROUND;
+        return AGIcon.TOOLBAR_BUTTON_BACKGROUND;
     }
 
     @Override
@@ -158,6 +161,6 @@ public class AAESettingToggleButton<T extends Enum<T>> extends AAEIconButton {
         }
     }
 
-    private record ButtonAppearance(@Nullable AAEIcon icon, @Nullable Item item, List<Component> tooltipLines) {
+    private record ButtonAppearance(@Nullable AGIcon icon, @Nullable Item item, List<Component> tooltipLines) {
     }
 }

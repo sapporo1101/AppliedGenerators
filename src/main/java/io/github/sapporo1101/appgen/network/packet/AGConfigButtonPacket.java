@@ -8,28 +8,28 @@ import appeng.core.network.CustomAppEngPayload;
 import appeng.core.network.ServerboundPacket;
 import appeng.menu.AEBaseMenu;
 import appeng.util.EnumCycler;
-import io.github.sapporo1101.appgen.api.AAESettings;
+import io.github.sapporo1101.appgen.api.AGSettings;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
-public record AAEConfigButtonPacket(Setting<?> option, boolean rotationDirection) implements ServerboundPacket {
+public record AGConfigButtonPacket(Setting<?> option, boolean rotationDirection) implements ServerboundPacket {
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, AAEConfigButtonPacket> STREAM_CODEC =
-            StreamCodec.ofMember(AAEConfigButtonPacket::write, AAEConfigButtonPacket::decode);
+    public static final StreamCodec<RegistryFriendlyByteBuf, AGConfigButtonPacket> STREAM_CODEC =
+            StreamCodec.ofMember(AGConfigButtonPacket::write, AGConfigButtonPacket::decode);
 
-    public static final Type<@NotNull AAEConfigButtonPacket> TYPE = CustomAppEngPayload.createType("ag_config_button");
+    public static final Type<@NotNull AGConfigButtonPacket> TYPE = CustomAppEngPayload.createType("ag_config_button");
 
     @Override
-    public @NotNull Type<@NotNull AAEConfigButtonPacket> type() {
+    public @NotNull Type<@NotNull AGConfigButtonPacket> type() {
         return TYPE;
     }
 
-    public static AAEConfigButtonPacket decode(RegistryFriendlyByteBuf stream) {
-        var option = AAESettings.getOrThrow(stream.readUtf());
+    public static AGConfigButtonPacket decode(RegistryFriendlyByteBuf stream) {
+        var option = AGSettings.getOrThrow(stream.readUtf());
         var rotationDirection = stream.readBoolean();
-        return new AAEConfigButtonPacket(option, rotationDirection);
+        return new AGConfigButtonPacket(option, rotationDirection);
     }
 
     public void write(RegistryFriendlyByteBuf data) {
