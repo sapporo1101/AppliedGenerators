@@ -52,15 +52,13 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
     private final PatternBufferInv storageInv = new PatternBufferInv(this::onStorageChanged, 36);
     private final AppEngInternalInventory patternInv = new AppEngInternalInventory(this, 1);
     private final IUpgradeInventory upgrades = new PatternBufferUpgradeInventory(AGSingletons.PATTERN_BUFFER, 5, this::onUpgradeChanged);
-    private final IConfigManager configManager;
-
+    private final IConfigManager configManager = IConfigManager.builder(this::onConfigChanged).registerSetting(AGSettings.KEEP_SIGNAL, KeepSignalMode.OFF).build();
     private final PatternInput patternInput = new PatternInput();
 
     private boolean lastSatisfied = false;
 
     public PatternBufferBlockEntity(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
         super(blockEntityType, pos, blockState);
-        this.configManager = IConfigManager.builder(this::onConfigChanged).registerSetting(AGSettings.KEEP_SIGNAL, KeepSignalMode.OFF).build();
     }
 
     private void onStorageChanged() {

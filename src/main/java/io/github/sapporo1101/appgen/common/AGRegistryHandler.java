@@ -149,7 +149,7 @@ public class AGRegistryHandler extends RegistryHandler {
     public void registerTab(Registry<CreativeModeTab> registry) {
         var tab = CreativeModeTab.builder()
                 .icon(() -> new ItemStack(AGSingletons.SINGULARITY_GENERATOR_1K))
-                .title(Component.translatable("itemGroup." + AppliedGenerators.MODID))
+                .title(Component.translatable("itemGroup.appgen"))
                 .displayItems((p, o) -> {
                     for (DeferredHolder<Item, ? extends Item> entry : this.items.getEntries()) {
                         if (entry.value() instanceof AEBaseItem aeItem) {

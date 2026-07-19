@@ -53,7 +53,6 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
     private final MachineSource source = new MachineSource(this);
     protected final DirectionSet outputSides = new DirectionSet(List.of());
 
-
     private double lastGeneratePerTick = 0;
     public boolean isOn = false;
     private YesNo lastRedstoneState = YesNo.UNDECIDED;

@@ -50,7 +50,7 @@ public interface IItemExtractor {
         return false;
     }
 
-    default boolean sendFluid(GenericStackInv fluidInv, Set<Direction> outputSides, BlockPos pos, Level level) {
+    default boolean sendFluid(GenericStackInv fluidInv, int slot, Set<Direction> outputSides, BlockPos pos, Level level) {
         if (level == null) return false;
         for (Direction dir : outputSides) {
             BlockPos targetPos = pos.relative(dir);
@@ -58,7 +58,7 @@ public interface IItemExtractor {
 
             sendFluid:
             if (fluidStorage != null) {
-                var outFluid = fluidInv.getStack(1);
+                var outFluid = fluidInv.getStack(slot);
                 var fluidKey = outFluid != null ? outFluid.what() : null;
                 if (outFluid == null || fluidKey == null) break sendFluid;
                 int canInsert;
@@ -70,7 +70,7 @@ public interface IItemExtractor {
                 if (canInsert <= 0) break sendFluid;
 
                 try (Transaction transaction = Transaction.openRoot()) {
-                    var extractedAmount = fluidInv.extract(1, fluidKey, canInsert, Actionable.MODULATE);
+                    var extractedAmount = fluidInv.extract(slot, fluidKey, canInsert, Actionable.MODULATE);
                     FluidStack extractedStack = ((AEFluidKey) fluidKey).toStack((int) extractedAmount);
                     int inserted = fluidStorage.insert(FluidResource.of(extractedStack), extractedStack.getAmount(), transaction);
                     if (inserted > 0) {

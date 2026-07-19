@@ -54,7 +54,7 @@ public abstract class FluxCellBaseBlock<U extends FluxCellBaseBlockEntity> exten
         }
 
         // For survival players, or creative with wrench, create the drop with NBT.
-        var be = builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
+        BlockEntity be = builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
         if (be instanceof FluxCellBaseBlockEntity fluxBe) {
             ItemStack drop = new ItemStack(fluxBe.getBlockState().getBlock());
             Level level = fluxBe.getLevel();

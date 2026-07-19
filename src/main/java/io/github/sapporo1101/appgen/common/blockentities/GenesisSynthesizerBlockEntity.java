@@ -450,9 +450,7 @@ public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity
             this.showWarning = false;
         }
 
-        if (this.sendStack()) {
-            return TickRateModulation.URGENT;
-        }
+        if (this.sendStack()) return TickRateModulation.URGENT;
 
         return this.hasCraftWork()
                 ? TickRateModulation.URGENT
@@ -487,7 +485,7 @@ public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity
     public boolean sendStack() {
         if (!this.hasAutoExportWork()) return false;
         return this.sendItem(this.outputInv, this.getOutputSides(), this.getBlockPos(), this.level)
-                || this.sendFluid(this.tankInv, this.getOutputSides(), this.getBlockPos(), this.level);
+                || this.sendFluid(this.tankInv, 1, this.getOutputSides(), this.getBlockPos(), this.level);
     }
 
     @Nullable

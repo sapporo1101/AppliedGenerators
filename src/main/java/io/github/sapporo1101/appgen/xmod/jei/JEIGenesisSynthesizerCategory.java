@@ -133,6 +133,6 @@ public class JEIGenesisSynthesizerCategory implements IRecipeCategory<RecipeHold
         FormattedCharSequence formattedcharsequence = text.getVisualOrderText();
         int textX = getWidth() - 20 - font.width(formattedcharsequence) / 2;
         guiGraphics.text(font, text, textX, 57, 0xFF7E7E7E, false);
-        aeIcon.draw(guiGraphics, textX - 16, 55);
+        aeIcon.draw(guiGraphics, textX - 16, 53);
     }
 }
