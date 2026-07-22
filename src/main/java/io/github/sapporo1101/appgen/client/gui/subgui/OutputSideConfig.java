@@ -27,14 +27,14 @@ import java.util.Locale;
 import java.util.function.BiConsumer;
 
 public class OutputSideConfig<C extends AEBaseMenu, P extends AEBaseScreen<C>> extends AESubScreen<C, P> {
-    private final EnumMap<Direction, OutputButton> btns = new EnumMap<>(Direction.class);
+    private final EnumMap<Direction, OutputButton> buttons = new EnumMap<>(Direction.class);
 
     public OutputSideConfig(P parent, ItemStack icon, AEBaseBlockEntity host, List<Direction> selectedSides, BiConsumer<Direction, Boolean> setter) {
         super(parent, "/screens/set_output_sides.json");
-        TabButton button = new TabButton(Icon.BACK, icon.getHoverName(), (btnx) -> this.returnToParent());
+        TabButton button = new TabButton(Icon.BACK, icon.getHoverName(), (btn) -> this.returnToParent());
         this.widgets.add("return", button);
         ActionButton clear = new ActionButton(ActionItems.S_CLOSE, (b) -> {
-            for (OutputButton btn : this.btns.values()) {
+            for (OutputButton btn : this.buttons.values()) {
                 btn.setOn(false);
             }
 
@@ -57,16 +57,16 @@ public class OutputSideConfig<C extends AEBaseMenu, P extends AEBaseScreen<C>> e
                 btn.setDisplay(this.getDisplayIcon(host, host.getLevel(), side));
             }
 
-            this.btns.put(side, btn);
+            this.buttons.put(side, btn);
         }
 
         for (Direction side : selectedSides) {
-            this.btns.get(side).setOn(true);
+            this.buttons.get(side).setOn(true);
         }
 
         for (RelativeSide relative : RelativeSide.values()) {
             Direction side = host.getOrientation().getSide(relative);
-            this.widgets.add(relative.name().toLowerCase(Locale.ROOT), this.btns.get(side));
+            this.widgets.add(relative.name().toLowerCase(Locale.ROOT), this.buttons.get(side));
         }
 
     }

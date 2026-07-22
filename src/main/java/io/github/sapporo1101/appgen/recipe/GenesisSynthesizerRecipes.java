@@ -63,30 +63,8 @@ public final class GenesisSynthesizerRecipes {
             if (failed) {
                 continue;
             }
-
             return recipe;
         }
-
         return null;
-    }
-
-    public static boolean isValidIngredient(ItemStack stack, Level level) {
-        for (var holder : getRecipes(level)) {
-            var recipe = holder.value();
-            if (recipe.containsIngredient(stack)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public static boolean isValidIngredient(FluidStack stack, Level level) {
-        for (var holder : getRecipes(level)) {
-            var recipe = holder.value();
-            if (recipe.containsIngredient(stack)) {
-                return true;
-            }
-        }
-        return false;
     }
 }

@@ -16,23 +16,24 @@ public class GenesisSynthesizerRecipeSerializer implements RecipeSerializer<Gene
     public static final GenesisSynthesizerRecipeSerializer INSTANCE = new GenesisSynthesizerRecipeSerializer();
 
     private GenesisSynthesizerRecipeSerializer() {
+        // NO-OP
     }
 
     public static final MapCodec<GenesisSynthesizerRecipe> CODEC = RecordCodecBuilder.mapCodec((builder) -> builder.group(
                     GenericStack.CODEC.fieldOf("output").forGetter((ir) -> ir.output),
-                    IngredientStack.ITEM_CODEC.listOf().fieldOf("input_items").forGetter((ir) -> ir.inputs),
-                    IngredientStack.FLUID_CODEC.fieldOf("input_fluid").forGetter((ir) -> ir.fluid),
-                    Codec.INT.fieldOf("input_energy").forGetter((ir) -> ir.energy))
+                    IngredientStack.ITEM_CODEC.listOf().fieldOf("item_inputs").forGetter((ir) -> ir.itemInputs),
+                    IngredientStack.FLUID_CODEC.fieldOf("fluid_input").forGetter((ir) -> ir.fluidInput),
+                    Codec.LONG.fieldOf("energy_input").forGetter((ir) -> ir.energy))
             .apply(builder, GenesisSynthesizerRecipe::new));
     public static final StreamCodec<RegistryFriendlyByteBuf, GenesisSynthesizerRecipe> STREAM_CODEC =
             StreamCodec.composite(
                     GenericStack.STREAM_CODEC,
                     (r) -> r.output,
                     IngredientStack.ITEM_STREAM_CODEC.apply(ByteBufCodecs.list()),
-                    (r) -> r.inputs,
+                    (r) -> r.itemInputs,
                     IngredientStack.FLUID_STREAM_CODEC,
-                    (r) -> r.fluid,
-                    ByteBufCodecs.INT,
+                    (r) -> r.fluidInput,
+                    ByteBufCodecs.VAR_LONG,
                     (r) -> r.energy,
                     GenesisSynthesizerRecipe::new);
 

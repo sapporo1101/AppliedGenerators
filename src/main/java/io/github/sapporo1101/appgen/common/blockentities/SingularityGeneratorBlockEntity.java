@@ -1,17 +1,13 @@
 package io.github.sapporo1101.appgen.common.blockentities;
 
-import appeng.api.config.Actionable;
 import appeng.api.config.YesNo;
 import appeng.api.inventories.ISegmentedInventory;
 import appeng.api.inventories.InternalInventory;
 import appeng.api.networking.GridFlags;
-import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
-import appeng.api.networking.storage.IStorageService;
 import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.networking.ticking.TickRateModulation;
 import appeng.api.networking.ticking.TickingRequest;
-import appeng.api.stacks.AEKey;
 import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.api.upgrades.UpgradeInventories;
@@ -29,11 +25,10 @@ import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.filter.AEItemDefinitionFilter;
 import appeng.util.inv.filter.IAEItemFilter;
-import com.glodblock.github.appflux.common.me.key.FluxKey;
-import com.glodblock.github.appflux.common.me.key.type.EnergyType;
 import com.glodblock.github.glodium.util.GlodUtil;
 import io.github.sapporo1101.appgen.api.AAESettings;
 import io.github.sapporo1101.appgen.common.AGSingletons;
+import io.github.sapporo1101.appgen.common.blockentities.interfaces.IEnergyExtractor;
 import io.github.sapporo1101.appgen.common.blocks.SingularityGeneratorBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -48,20 +43,16 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.energy.IEnergyStorage;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBlockEntity implements IGridTickable, IUpgradeableObject, IConfigurableObject {
-    public static final @NotNull AEKey FE_KEY = FluxKey.of(EnergyType.FE);
+public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBlockEntity implements IGridTickable, IUpgradeableObject, IConfigurableObject, IEnergyExtractor {
     public static final MaterialItem SINGULARITY = AEItems.SINGULARITY.asItem();
 
-    private final AppEngInternalInventory inv = new AppEngInternalInventory(this, 1, 64, new AEItemDefinitionFilter(AEItems.SINGULARITY));
+    private final InternalInventory inv = new AppEngInternalInventory(this, 1, 64, new AEItemDefinitionFilter(AEItems.SINGULARITY));
     private final InternalInventory invExt = new FilteredInternalInventory(this.inv, new SingularitySlotFilter());
     private final IUpgradeInventory upgrades;
     private final IConfigManager configManager;
@@ -81,7 +72,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         this.generatableFE = 0;
     }
 
-    abstract int getBaseGeneratePerTick();
+    abstract long getBaseGeneratePerTick();
 
     abstract long getBaseFEPerSingularity();
 
@@ -283,12 +274,12 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         this.generatableFE = generatableFE;
     }
 
-    public int getGeneratePerTick() {
+    public long getGeneratePerTick() {
         if (this.upgrades == null) {
             return this.getBaseGeneratePerTick();
         }
         double upgradeMultiplier = 1 + this.upgrades.getInstalledUpgrades(AEItems.SPEED_CARD) * 0.5;
-        return (int) (this.getBaseGeneratePerTick() * upgradeMultiplier);
+        return (long) (this.getBaseGeneratePerTick() * upgradeMultiplier);
     }
 
     public long getFEPerSingularity() {
@@ -300,38 +291,13 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
     }
 
     public long sendFEToNetwork(long amount) {
-        if (this.getGridNode() == null) return 0;
-
-        IGrid grid = this.getGridNode().getGrid();
-        IStorageService storage = grid.getStorageService();
-
-        long inserted = storage.getInventory().insert(FE_KEY, amount, Actionable.MODULATE, this.source);
+        long inserted = this.sendFEToNetwork(amount, this.getGridNode(), this.source);
         this.setGeneratableFE(Math.max(0, this.getGeneratableFE() - inserted));
-
         return inserted;
     }
 
     private long sendFEToAdjacentBlock(long amount) {
-        if (this.level == null) return 0;
-
-        long remaining = amount;
-        forDir:
-        for (Direction dir : this.outputSides) {
-            if (remaining <= 0) break;
-            BlockPos targetPos = this.getBlockPos().relative(dir);
-            IEnergyStorage storage = this.level.getCapability(Capabilities.EnergyStorage.BLOCK, targetPos, dir.getOpposite());
-            if (storage != null && storage.canReceive()) {
-                for (int i = 0; i < remaining / Integer.MAX_VALUE + 1; i++) {
-                    int batch = (int) Math.min(remaining, Integer.MAX_VALUE);
-                    int canInsert = storage.receiveEnergy(batch, true);
-                    if (canInsert <= 0) continue forDir;
-                    int inserted = storage.receiveEnergy(batch, false);
-                    this.setGeneratableFE(Math.max(0, this.getGeneratableFE() - inserted));
-                    remaining -= inserted;
-                }
-            }
-        }
-        return amount - remaining;
+        return this.sendFEToAdjacentBlock(amount, this.outputSides, this.getBlockPos(), this.level);
     }
 
     public double getLastGeneratePerTick() {
@@ -367,7 +333,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 200;
         }
 
@@ -384,7 +350,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 800;
         }
 
@@ -401,7 +367,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 3_200;
         }
 
@@ -418,7 +384,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 12_800;
         }
 
@@ -435,7 +401,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 51_200;
         }
 
@@ -452,7 +418,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 204_800;
         }
 
@@ -469,7 +435,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 819_200;
         }
 
@@ -486,7 +452,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 3_276_800;
         }
 
@@ -503,7 +469,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 13_107_200;
         }
 
@@ -520,7 +486,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 52_428_800;
         }
 

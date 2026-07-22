@@ -26,17 +26,17 @@ public class GenesisSynthesizerRecipe implements Recipe<RecipeInput> {
     public static final ResourceLocation ID = AppliedGenerators.id("synthesizing");
     public static final RecipeType<GenesisSynthesizerRecipe> TYPE = RecipeType.simple(ResourceLocation.parse(ID.toString()));
 
-    protected final List<IngredientStack.Item> inputs;
-    protected final IngredientStack.Fluid fluid;
+    protected final List<IngredientStack.Item> itemInputs;
+    protected final IngredientStack.Fluid fluidInput;
     public final GenericStack output;
 
-    protected final int energy;
+    protected final long energy;
 
     public GenesisSynthesizerRecipe(
-            GenericStack output, List<IngredientStack.Item> inputs, IngredientStack.Fluid fluid, int energy) {
-        this.inputs = inputs;
+            GenericStack output, List<IngredientStack.Item> itemInputs, IngredientStack.Fluid fluidInput, long energy) {
+        this.itemInputs = itemInputs;
         this.output = output;
-        this.fluid = fluid;
+        this.fluidInput = fluidInput;
         this.energy = energy;
     }
 
@@ -88,47 +88,34 @@ public class GenesisSynthesizerRecipe implements Recipe<RecipeInput> {
         return TYPE;
     }
 
-    public List<IngredientStack.Item> getInputs() {
-        return inputs;
+    public List<IngredientStack.Item> getItemInputs() {
+        return itemInputs;
     }
 
     public List<IngredientStack<?, ?>> getValidInputs() {
         List<IngredientStack<?, ?>> validInputs = new ArrayList<>();
 
-        for (var input : this.inputs) {
+        for (var input : this.itemInputs) {
             if (!input.isEmpty()) {
                 validInputs.add(input.sample());
             }
         }
 
-        validInputs.add(this.fluid.sample());
+        validInputs.add(this.fluidInput.sample());
         return validInputs;
     }
 
     @Nullable
-    public IngredientStack.Fluid getFluid() {
-        return this.fluid;
+    public IngredientStack.Fluid getFluidInput() {
+        return this.fluidInput;
     }
 
-    public int getEnergy() {
+    public long getEnergy() {
         return this.energy;
     }
 
     @Override
     public boolean isSpecial() {
         return true;
-    }
-
-    public boolean containsIngredient(ItemStack stack) {
-        for (var input : inputs) {
-            if (!input.isEmpty() && input.getIngredient().test(stack)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean containsIngredient(FluidStack stack) {
-        return this.fluid.getIngredient().test(stack);
     }
 }

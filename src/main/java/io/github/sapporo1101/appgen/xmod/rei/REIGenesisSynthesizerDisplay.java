@@ -24,16 +24,16 @@ public class REIGenesisSynthesizerDisplay implements Display {
     private final List<EntryIngredient> outputs;
     private final List<EntryIngredient> combined;
     private final EntryIngredient fluid;
-    private final int energy;
+    private final long energy;
 
     public REIGenesisSynthesizerDisplay(RecipeHolder<GenesisSynthesizerRecipe> holder) {
         this.holder = holder;
         var recipe = holder.value();
-        this.inputs = recipe.getInputs().stream()
+        this.inputs = recipe.getItemInputs().stream()
                 .map(REIPlugin::stackOf)
                 .filter(o -> !o.isEmpty())
                 .toList();
-        this.fluid = recipe.getFluid() != null ? REIPlugin.stackOf(recipe.getFluid(), 16000) : EntryIngredient.empty();
+        this.fluid = recipe.getFluidInput() != null ? REIPlugin.stackOf(recipe.getFluidInput(), 16000) : EntryIngredient.empty();
 
         var fluid = EntryStacks.of(
                 recipe.getResultFluid().getFluid(), recipe.getResultFluid().getAmount());
@@ -57,7 +57,7 @@ public class REIGenesisSynthesizerDisplay implements Display {
         return this.fluid;
     }
 
-    public int getEnergy() {
+    public long getEnergy() {
         return this.energy;
     }
 

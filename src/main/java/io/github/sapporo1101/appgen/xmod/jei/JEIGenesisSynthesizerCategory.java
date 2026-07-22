@@ -1,12 +1,12 @@
 package io.github.sapporo1101.appgen.xmod.jei;
 
 import appeng.core.AppEng;
+import appeng.util.ReadableNumberConverter;
 import com.glodblock.github.glodium.recipe.stack.IngredientStack;
 import io.github.sapporo1101.appgen.AppliedGenerators;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.common.blockentities.GenesisSynthesizerBlockEntity;
 import io.github.sapporo1101.appgen.recipe.GenesisSynthesizerRecipe;
-import io.github.sapporo1101.appgen.util.CommaSeparator;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
@@ -19,7 +19,6 @@ import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -34,7 +33,7 @@ public class JEIGenesisSynthesizerCategory implements IRecipeCategory<GenesisSyn
             RecipeType.create(AppliedGenerators.MODID, "genesis_synthesizer", GenesisSynthesizerRecipe.class);
 
     private static final ResourceLocation BACKGROUND = AppEng.makeId("textures/guis/genesis_synthesizer.png");
-    private static final ResourceLocation AE_TEXTURE = AppliedGenerators.id("textures/gui/emi_ae.png");
+    private static final ResourceLocation AE_TEXTURE = AppEng.makeId("textures/xei/xei_icons.png");
 
     private final IDrawable icon;
 
@@ -42,7 +41,7 @@ public class JEIGenesisSynthesizerCategory implements IRecipeCategory<GenesisSyn
 
     private final IDrawableAnimated progress;
 
-    private final IDrawableStatic ae;
+    private final IDrawableStatic aeIcon;
 
     public JEIGenesisSynthesizerCategory(IJeiHelpers helpers) {
         IGuiHelper guiHelper = helpers.getGuiHelper();
@@ -53,9 +52,9 @@ public class JEIGenesisSynthesizerCategory implements IRecipeCategory<GenesisSyn
         this.progress =
                 guiHelper.createAnimatedDrawable(progressDrawable, 40, IDrawableAnimated.StartDirection.BOTTOM, false);
 
-        ae = guiHelper
-                .drawableBuilder(AE_TEXTURE, 0, 0, 10, 12)
-                .setTextureSize(32, 32)
+        aeIcon = guiHelper
+                .drawableBuilder(AE_TEXTURE, 0, 0, 16, 16)
+                .setTextureSize(256, 256)
                 .build();
     }
 
@@ -87,7 +86,7 @@ public class JEIGenesisSynthesizerCategory implements IRecipeCategory<GenesisSyn
     @Override
     public void setRecipe(@NotNull IRecipeLayoutBuilder builder, GenesisSynthesizerRecipe recipe, @NotNull IFocusGroup focuses) {
         var index = 0;
-        var inputs = recipe.getInputs();
+        var inputs = recipe.getItemInputs();
         for (IngredientStack.Item in : inputs) {
             // if ingredient is charged ember crystal, set it to another position
             if (in.getIngredient().test(new ItemStack(AGSingletons.EMBER_CRYSTAL_CHARGED))) {
@@ -102,8 +101,8 @@ public class JEIGenesisSynthesizerCategory implements IRecipeCategory<GenesisSyn
             index++;
         }
 
-        if (recipe.getFluid() != null) {
-            IngredientStack.Fluid fluid = recipe.getFluid();
+        if (recipe.getFluidInput() != null) {
+            IngredientStack.Fluid fluid = recipe.getFluidInput();
             IRecipeSlotBuilder slot = builder.addInputSlot(60, 46 - 1).setFluidRenderer(16000, false, 16, 16);
             slot.addIngredients(NeoForgeTypes.FLUID_STACK, JEIPlugin.stackOf(fluid));
         }
@@ -127,17 +126,15 @@ public class JEIGenesisSynthesizerCategory implements IRecipeCategory<GenesisSyn
         this.background.draw(guiGraphics);
         this.progress.draw(guiGraphics, 135, 27 - 1);
 
-        int crystalAmount = recipe.getInputs().stream().filter(item -> item.getIngredient().test(new ItemStack(AGSingletons.EMBER_CRYSTAL_CHARGED))).toList().getLast().getAmount();
+        int crystalAmount = recipe.getItemInputs().stream().filter(item -> item.getIngredient().test(new ItemStack(AGSingletons.EMBER_CRYSTAL_CHARGED))).toList().getLast().getAmount();
         int crystalHeight = 18 * crystalAmount / GenesisSynthesizerBlockEntity.MAX_CRYSTAL_TANK;
         guiGraphics.blit(BACKGROUND, 88, 9 + Math.max(18 - crystalHeight, 0) - 1, 182, Math.max(18 - crystalHeight, 0), 6, 18);
 
         Font font = Minecraft.getInstance().font;
-        Component text = Component.translatable("emi.text.appgen.genesis_synthesizer.energy", CommaSeparator.FORMATTER.format(recipe.getEnergy()));
+        Component text = Component.translatable("emi.text.appgen.genesis_synthesizer.energy", ReadableNumberConverter.format(recipe.getEnergy(), 4));
         FormattedCharSequence formattedcharsequence = text.getVisualOrderText();
-        int textX = getWidth() / 2 + 4 - font.width(formattedcharsequence) / 2;
-        //noinspection DataFlowIssue
-        guiGraphics.drawString(font, text, textX, 67, ChatFormatting.DARK_GRAY.getColor(), false);
-
-        ae.draw(guiGraphics, textX - 16, 65);
+        int textX = getWidth() - 20 - font.width(formattedcharsequence) / 2;
+        guiGraphics.drawString(font, text, textX, 57, 0xFF7E7E7E, false);
+        aeIcon.draw(guiGraphics, textX - 16, 53);
     }
 }

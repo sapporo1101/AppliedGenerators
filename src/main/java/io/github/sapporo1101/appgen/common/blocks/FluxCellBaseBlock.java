@@ -9,6 +9,7 @@ import io.github.sapporo1101.appgen.menu.FluxCellMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -48,8 +49,8 @@ public abstract class FluxCellBaseBlock<U extends FluxCellBaseBlockEntity> exten
 
     @Override
     public @NotNull List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
-        var player = builder.getOptionalParameter(LootContextParams.THIS_ENTITY);
-        var tool = builder.getOptionalParameter(LootContextParams.TOOL);
+        Entity player = builder.getOptionalParameter(LootContextParams.THIS_ENTITY);
+        ItemStack tool = builder.getOptionalParameter(LootContextParams.TOOL);
 
         boolean isWrench = false;
         if (tool != null) {
@@ -61,7 +62,7 @@ public abstract class FluxCellBaseBlock<U extends FluxCellBaseBlockEntity> exten
         }
 
         // For survival players, or creative with wrench, create the drop with NBT.
-        var be = builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
+        BlockEntity be = builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
         if (be instanceof FluxCellBaseBlockEntity fluxBe) {
             ItemStack drop = new ItemStack(fluxBe.getBlockState().getBlock());
             Level level = fluxBe.getLevel();

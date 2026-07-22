@@ -20,82 +20,82 @@ import java.util.Objects;
 
 @SuppressWarnings("unused")
 public class GenesisSynthesizerRecipeBuilder {
-    private final List<IngredientStack.Item> inputs = new ArrayList<>();
-    private IngredientStack.Fluid fluid = null;
-    private final int energy;
+    private final List<IngredientStack.Item> itemInputs = new ArrayList<>();
+    private IngredientStack.Fluid fluidInput = null;
+    private final long energy;
     private final GenericStack output;
 
-    public GenesisSynthesizerRecipeBuilder(@NotNull GenericStack output, int energy) {
+    public GenesisSynthesizerRecipeBuilder(@NotNull GenericStack output, long energy) {
         this.output = output;
         this.energy = energy;
     }
 
-    public static GenesisSynthesizerRecipeBuilder synthesize(ItemStack stack, int energy) {
+    public static GenesisSynthesizerRecipeBuilder synthesize(ItemStack stack, long energy) {
         return new GenesisSynthesizerRecipeBuilder(Objects.requireNonNull(GenericStack.fromItemStack(stack)), energy);
     }
 
-    public static GenesisSynthesizerRecipeBuilder synthesize(ItemLike stack, int energy) {
+    public static GenesisSynthesizerRecipeBuilder synthesize(ItemLike stack, long energy) {
         return synthesize(new ItemStack(stack), energy);
     }
 
-    public static GenesisSynthesizerRecipeBuilder synthesize(ItemLike stack, int count, int energy) {
+    public static GenesisSynthesizerRecipeBuilder synthesize(ItemLike stack, int count, long energy) {
         return synthesize(new ItemStack(stack, count), energy);
     }
 
-    public static GenesisSynthesizerRecipeBuilder synthesize(FluidStack stack, int energy) {
+    public static GenesisSynthesizerRecipeBuilder synthesize(FluidStack stack, long energy) {
         return new GenesisSynthesizerRecipeBuilder(Objects.requireNonNull(GenericStack.fromFluidStack(stack)), energy);
     }
 
-    public static GenesisSynthesizerRecipeBuilder synthesize(Fluid stack, int energy) {
+    public static GenesisSynthesizerRecipeBuilder synthesize(Fluid stack, long energy) {
         return synthesize(new FluidStack(stack, 1000), energy);
     }
 
-    public static GenesisSynthesizerRecipeBuilder synthesize(Fluid stack, int count, int energy) {
+    public static GenesisSynthesizerRecipeBuilder synthesize(Fluid stack, int count, long energy) {
         return synthesize(new FluidStack(stack, count), energy);
     }
 
     public GenesisSynthesizerRecipeBuilder fluid(FluidStack fluid) {
-        this.fluid = IngredientStack.of(fluid);
+        this.fluidInput = IngredientStack.of(fluid);
         return this;
     }
 
     public GenesisSynthesizerRecipeBuilder fluid(Fluid fluid, int amount) {
-        this.fluid = IngredientStack.of(new FluidStack(fluid, amount));
+        this.fluidInput = IngredientStack.of(new FluidStack(fluid, amount));
         return this;
     }
 
     public GenesisSynthesizerRecipeBuilder fluid(TagKey<Fluid> tag, int amount) {
-        this.fluid = IngredientStack.of(FluidIngredient.tag(tag), amount);
+        this.fluidInput = IngredientStack.of(FluidIngredient.tag(tag), amount);
         return this;
     }
 
     public GenesisSynthesizerRecipeBuilder input(ItemStack item) {
-        this.inputs.add(IngredientStack.of(item));
+        this.itemInputs.add(IngredientStack.of(item));
         return this;
     }
 
     public GenesisSynthesizerRecipeBuilder input(ItemLike item) {
-        this.inputs.add(IngredientStack.of(new ItemStack(item)));
+        this.itemInputs.add(IngredientStack.of(new ItemStack(item)));
         return this;
     }
 
     public GenesisSynthesizerRecipeBuilder input(ItemLike item, int count) {
-        this.inputs.add(IngredientStack.of(new ItemStack(item, count)));
+        this.itemInputs.add(IngredientStack.of(new ItemStack(item, count)));
         return this;
     }
 
     public GenesisSynthesizerRecipeBuilder input(TagKey<Item> tag) {
-        this.inputs.add(IngredientStack.of(Ingredient.of(tag), 1));
+        this.itemInputs.add(IngredientStack.of(Ingredient.of(tag), 1));
         return this;
     }
 
     public GenesisSynthesizerRecipeBuilder input(TagKey<Item> tag, int count) {
-        this.inputs.add(IngredientStack.of(Ingredient.of(tag), count));
+        this.itemInputs.add(IngredientStack.of(Ingredient.of(tag), count));
         return this;
     }
 
     public void save(RecipeOutput consumer, ResourceLocation id) {
-        var recipe = new GenesisSynthesizerRecipe(this.output, this.inputs, this.fluid, this.energy);
+        var recipe = new GenesisSynthesizerRecipe(this.output, this.itemInputs, this.fluidInput, this.energy);
         consumer.accept(id, recipe, null);
     }
 }

@@ -26,6 +26,6 @@ public class ClientRegistryHandler {
 
     @SubscribeEvent
     public void registerModels(ModelEvent.RegisterGeometryLoaders event) {
-        BlockEntityRenderers.register(GlodUtil.getTileType(PatternBufferBlockEntity.class), PatternBufferRenderer::new);
+        BlockEntityRenderers.register(GlodUtil.getTileType(PatternBufferBlockEntity.class), context -> new PatternBufferRenderer());
     }
 }

@@ -31,6 +31,7 @@ import appeng.util.inv.filter.AEItemFilters;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.glodblock.github.glodium.util.GlodUtil;
 import io.github.sapporo1101.appgen.common.AGSingletons;
+import io.github.sapporo1101.appgen.common.blockentities.interfaces.IItemExtractor;
 import io.github.sapporo1101.appgen.common.blocks.GenesisSynthesizerBlock;
 import io.github.sapporo1101.appgen.recipe.GenesisSynthesizerRecipe;
 import io.github.sapporo1101.appgen.recipe.GenesisSynthesizerRecipes;
@@ -49,23 +50,20 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
-import net.neoforged.neoforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity implements IGridTickable, IUpgradeableObject, IConfigurableObject {
+public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity implements IGridTickable, IUpgradeableObject, IConfigurableObject, IItemExtractor {
 
     public static final long POWER_MAXIMUM_AMOUNT = 10_000_000;
     public static final int MAX_PROGRESS = 200;
     public static final int MAX_CRYSTAL_TANK = 1000;
 
-    private final AppEngInternalInventory inputInv = new AppEngInternalInventory(this, 9, 64, new RestrictItemFilter(AGSingletons.EMBER_CRYSTAL_CHARGED));
-    private final AppEngInternalInventory crystalInv = new AppEngInternalInventory(this, 1, 64, new AllowItemFilter(AGSingletons.EMBER_CRYSTAL_CHARGED));
-    private final AppEngInternalInventory outputInv = new AppEngInternalInventory(this, 1, 64);
+    private final InternalInventory inputInv = new AppEngInternalInventory(this, 9, 64, new RestrictItemFilter(AGSingletons.EMBER_CRYSTAL_CHARGED));
+    private final InternalInventory crystalInv = new AppEngInternalInventory(this, 1, 64, new AllowItemFilter(AGSingletons.EMBER_CRYSTAL_CHARGED));
+    private final InternalInventory outputInv = new AppEngInternalInventory(this, 1, 64);
     private final InternalInventory combinedInputInv = new CombinedInternalInventory(this.inputInv, this.crystalInv);
     private final InternalInventory inv = new CombinedInternalInventory(this.combinedInputInv, this.outputInv);
     private final FilteredInternalInventory combinedInputExposed = new FilteredInternalInventory(this.combinedInputInv, AEItemFilters.INSERT_ONLY);
@@ -270,11 +268,8 @@ public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity
     }
 
     public void setOutputSide(Direction side, boolean value) {
-        if (value) {
-            this.outputSides.add(side);
-        } else {
-            this.outputSides.remove(side);
-        }
+        if (value) this.outputSides.add(side);
+        else this.outputSides.remove(side);
         this.onOutputSideChanged();
     }
 
@@ -363,7 +358,7 @@ public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity
                 final int progressReq = MAX_PROGRESS - this.getProgress();
                 final float powerRatio = progressReq < speedFactor ? (float) progressReq / speedFactor : 1;
                 final int requiredTicks = Mth.ceil((float) MAX_PROGRESS / speedFactor);
-                final int aeConsumption = Mth.floor(((float) Objects.requireNonNull(getTask()).getEnergy() / requiredTicks) * powerRatio);
+                final long aeConsumption = Mth.lfloor(((double) Objects.requireNonNull(getTask()).getEnergy() / requiredTicks) * powerRatio);
                 final double powerThreshold = aeConsumption - 0.01;
 
                 double powerReq = this.extractAEPower(aeConsumption, Actionable.SIMULATE, PowerMultiplier.CONFIG);
@@ -393,7 +388,7 @@ public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity
                                 (double) (aeConsumption * factor) / speedFactor,
                                 Actionable.MODULATE,
                                 PowerMultiplier.CONFIG);
-                        var actualFactor = (int) Math.floor(extracted / aeConsumption * speedFactor);
+                        var actualFactor = Mth.floor(extracted / aeConsumption * speedFactor);
                         this.addProgress(actualFactor);
                     }
 
@@ -473,9 +468,7 @@ public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity
             this.showWarning = false;
         }
 
-        if (this.pushOutResult()) {
-            return TickRateModulation.URGENT;
-        }
+        if (this.sendStack()) return TickRateModulation.URGENT;
 
         return this.hasCraftWork()
                 ? TickRateModulation.URGENT
@@ -506,51 +499,11 @@ public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity
         return this.isWorking();
     }
 
-    private boolean pushOutResult() {
-        if (!this.hasAutoExportWork() || this.level == null) {
-            return false;
-        }
-
-        for (Direction dir : outputSides) {
-            BlockPos targetPos = this.getBlockPos().relative(dir);
-            IItemHandler itemStorage = this.level.getCapability(Capabilities.ItemHandler.BLOCK, targetPos, dir.getOpposite());
-            IFluidHandler fluidStorage = this.level.getCapability(Capabilities.FluidHandler.BLOCK, targetPos, dir.getOpposite());
-
-            boolean movedStacks = false;
-            if (itemStorage != null) {
-                if (this.outputInv.getStackInSlot(0) != null && !this.outputInv.getStackInSlot(0).isEmpty()) {
-                    ItemStack remainingStack = this.outputInv.extractItem(0, 64, false);
-                    for (int i = 0; i < itemStorage.getSlots(); i++) {
-                        if (remainingStack.getCount() <= 0) break;
-                        remainingStack = itemStorage.insertItem(i, remainingStack, false);
-                    }
-                    this.outputInv.insertItem(0, remainingStack, false);
-                    movedStacks |= !remainingStack.isEmpty();
-                }
-            }
-
-            if (fluidStorage != null) {
-                var outFluid = this.tankInv.getStack(1);
-                var fluidKey = outFluid != null ? outFluid.what() : null;
-                if (outFluid != null && fluidKey != null) {
-                    var extracted = this.tankInv.extract(1, fluidKey, outFluid.amount(), Actionable.MODULATE);
-                    var inserted = fluidStorage.fill(((AEFluidKey) fluidKey).toStack((int) outFluid.amount()), IFluidHandler.FluidAction.EXECUTE);
-                    this.tankInv.add(1, ((AEFluidKey) fluidKey), (int) (extracted - inserted));
-
-                    if (this.tankInv.getAmount(1) == 0) {
-                        this.tankInv.clear(1);
-                    }
-
-                    movedStacks |= inserted > 0;
-                }
-            }
-
-            if (movedStacks) {
-                return true;
-            }
-
-        }
-        return false;
+    @Override
+    public boolean sendStack() {
+        if (!this.hasAutoExportWork()) return false;
+        return this.sendItem(this.outputInv, this.getOutputSides(), this.getBlockPos(), this.level)
+                || this.sendFluid(this.tankInv, 1, this.getOutputSides(), this.getBlockPos(), this.level);
     }
 
     @Nullable
@@ -609,13 +562,7 @@ public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity
         return this.showWarning;
     }
 
-    private static class RestrictItemFilter implements IAEItemFilter {
-
-        private final Item RESTRICTED_ITEM;
-
-        public RestrictItemFilter(Item item) {
-            this.RESTRICTED_ITEM = item;
-        }
+    private record RestrictItemFilter(Item RESTRICTED_ITEM) implements IAEItemFilter {
 
         @Override
         public boolean allowInsert(InternalInventory inv, int slot, ItemStack stack) {
@@ -623,13 +570,7 @@ public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity
         }
     }
 
-    private static class AllowItemFilter implements IAEItemFilter {
-
-        private final Item ALLOWED_ITEM;
-
-        public AllowItemFilter(Item item) {
-            this.ALLOWED_ITEM = item;
-        }
+    private record AllowItemFilter(Item ALLOWED_ITEM) implements IAEItemFilter {
 
         @Override
         public boolean allowInsert(InternalInventory inv, int slot, ItemStack stack) {
@@ -694,15 +635,6 @@ public class GenesisSynthesizerBlockEntity extends AENetworkedPoweredBlockEntity
             assert stack != null;
             this.setStack(slot, new GenericStack(key, newAmount));
             return amount;
-        }
-
-        public void clear(int slot) {
-            boolean changed = this.stacks[slot] != null;
-            this.setStack(slot, null);
-
-            if (changed) {
-                onChange();
-            }
         }
     }
 }

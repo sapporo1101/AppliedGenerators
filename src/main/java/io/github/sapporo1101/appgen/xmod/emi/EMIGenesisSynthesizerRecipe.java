@@ -1,18 +1,16 @@
 package io.github.sapporo1101.appgen.xmod.emi;
 
 import appeng.core.AppEng;
+import appeng.util.ReadableNumberConverter;
 import com.glodblock.github.glodium.recipe.stack.IngredientStack;
 import dev.emi.emi.api.recipe.BasicEmiRecipe;
 import dev.emi.emi.api.recipe.EmiRecipeCategory;
 import dev.emi.emi.api.stack.EmiStack;
 import dev.emi.emi.api.widget.TextWidget;
 import dev.emi.emi.api.widget.WidgetHolder;
-import io.github.sapporo1101.appgen.AppliedGenerators;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.common.blockentities.GenesisSynthesizerBlockEntity;
 import io.github.sapporo1101.appgen.recipe.GenesisSynthesizerRecipe;
-import io.github.sapporo1101.appgen.util.CommaSeparator;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -26,14 +24,14 @@ public class EMIGenesisSynthesizerRecipe extends BasicEmiRecipe {
         super(CATEGORY, holder.id(), 168, 80);
         this.recipe = holder.value();
 
-        for (IngredientStack.Item in : this.recipe.getInputs()) {
+        for (IngredientStack.Item in : this.recipe.getItemInputs()) {
             if (!in.isEmpty()) {
                 this.inputs.add(EMIPlugin.stackOf(in));
             }
         }
 
-        if (this.recipe.getFluid() != null) {
-            this.inputs.add(EMIPlugin.stackOf(this.recipe.getFluid()));
+        if (this.recipe.getFluidInput() != null) {
+            this.inputs.add(EMIPlugin.stackOf(this.recipe.getFluidInput()));
         }
 
         this.outputs.add(EmiStack.of(this.recipe.getResultItem()));
@@ -42,18 +40,17 @@ public class EMIGenesisSynthesizerRecipe extends BasicEmiRecipe {
 
     public void addWidgets(WidgetHolder widgets) {
         ResourceLocation background = AppEng.makeId("textures/guis/genesis_synthesizer.png");
-        ResourceLocation fe = AppliedGenerators.id("textures/gui/emi_ae.png");
+        ResourceLocation aeIcon = AppEng.makeId("textures/xei/xei_icons.png");
         widgets.addTexture(background, 0, 0, 168, 80, 4, 13);
         widgets.addAnimatedTexture(background, 136, 28, 6, 18, 176, 0, 2000, false, true, false);
-        // noinspection DataFlowIssue
-        TextWidget energyLabel = widgets.addText(Component.translatable("emi.text.appgen.genesis_synthesizer.energy", CommaSeparator.FORMATTER.format(this.recipe.getEnergy())), this.width / 2 + 4, 70, ChatFormatting.DARK_GRAY.getColor(), false).horizontalAlign(TextWidget.Alignment.CENTER);
+        TextWidget energyLabel = widgets.addText(Component.translatable("emi.text.appgen.genesis_synthesizer.energy", ReadableNumberConverter.format(this.recipe.getEnergy(), 4)), this.width - 24, 62, 0xFF7E7E7E, false).horizontalAlign(TextWidget.Alignment.CENTER);
         int energyLabelX = energyLabel.getBounds().x();
-        int energyLabelY = 72 + energyLabel.getBounds().height() / 2;
-        widgets.addTexture(fe, energyLabelX - 16, energyLabelY - 8, 10, 12, 0, 0, 10, 12, 32, 32);
+        int energyLabelY = 62 + energyLabel.getBounds().height() / 2;
+        widgets.addTexture(aeIcon, energyLabelX - 16, energyLabelY - 8, 16, 16, 0, 0, 16, 16, 256, 256);
         int index = 0;
 
         IngredientStack.Item crystal = null;
-        for (IngredientStack.Item in : this.recipe.getInputs()) {
+        for (IngredientStack.Item in : this.recipe.getItemInputs()) {
             // if ingredient is charged ember crystal, set it to another position
             if (in.getIngredient().test(new ItemStack(AGSingletons.EMBER_CRYSTAL_CHARGED))) {
                 crystal = in;
@@ -69,8 +66,8 @@ public class EMIGenesisSynthesizerRecipe extends BasicEmiRecipe {
         widgets.addTexture(background, 89, 10 + Math.max(18 - crystalHeight, 0), 6, 18, 182, Math.max(18 - crystalHeight, 0));
         if (crystal != null) widgets.addSlot(EMIPlugin.stackOf(crystal), 69, 10).drawBack(false);
 
-        if (this.recipe.getFluid() != null) {
-            widgets.addTank(EMIPlugin.stackOf(this.recipe.getFluid()), 60, 46, 18, 18, 16000).drawBack(false);
+        if (this.recipe.getFluidInput() != null) {
+            widgets.addTank(EMIPlugin.stackOf(this.recipe.getFluidInput()), 60, 46, 18, 18, 16000).drawBack(false);
         }
 
         if (this.recipe.isItemOutput()) {

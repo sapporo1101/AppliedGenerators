@@ -80,7 +80,7 @@ public abstract class FluxCellBaseBlockEntity extends AEBaseBlockEntity implemen
     @Override
     public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
         super.saveAdditional(data, registries);
-        this.feInv.writeToChildTag(data, "buffer", registries);
+        this.feInv.writeToChildTag(data, "fe_inv", registries);
         var sides = new ListTag();
         for (var side : this.outputSides) {
             sides.add(StringTag.valueOf(side.getName()));
@@ -91,7 +91,7 @@ public abstract class FluxCellBaseBlockEntity extends AEBaseBlockEntity implemen
     @Override
     public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
         super.loadTag(data, registries);
-        this.feInv.readFromChildTag(data, "buffer", registries);
+        this.feInv.readFromChildTag(data, "fe_inv", registries);
         this.outputSides.clear();
         if (data.contains("output_side")) {
             var list = data.getList("output_side", CompoundTag.TAG_STRING);

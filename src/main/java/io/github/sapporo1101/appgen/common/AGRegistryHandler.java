@@ -112,7 +112,7 @@ public class AGRegistryHandler extends RegistryHandler {
 
     public void registerTab(Registry<CreativeModeTab> registry) {
         var tab = CreativeModeTab.builder()
-                .icon(() -> new ItemStack(AGSingletons.FLUX_CELL))
+                .icon(() -> new ItemStack(AGSingletons.SINGULARITY_GENERATOR_1K))
                 .title(Component.translatable("itemGroup.appgen"))
                 .displayItems((p, o) -> {
                     for (Pair<String, Item> entry : items) {

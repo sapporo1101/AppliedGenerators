@@ -1,21 +1,17 @@
 package io.github.sapporo1101.appgen.common.blockentities;
 
-import appeng.api.config.Actionable;
 import appeng.api.config.RedstoneMode;
 import appeng.api.config.Settings;
 import appeng.api.config.YesNo;
 import appeng.api.inventories.ISegmentedInventory;
 import appeng.api.inventories.InternalInventory;
 import appeng.api.networking.GridFlags;
-import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
-import appeng.api.networking.storage.IStorageService;
 import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.networking.ticking.TickRateModulation;
 import appeng.api.networking.ticking.TickingRequest;
 import appeng.api.orientation.BlockOrientation;
 import appeng.api.orientation.RelativeSide;
-import appeng.api.stacks.AEKey;
 import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.api.upgrades.UpgradeInventories;
@@ -27,11 +23,10 @@ import appeng.core.settings.TickRates;
 import appeng.me.helpers.MachineSource;
 import appeng.util.Platform;
 import appeng.util.SettingsFrom;
-import com.glodblock.github.appflux.common.me.key.FluxKey;
-import com.glodblock.github.appflux.common.me.key.type.EnergyType;
 import com.glodblock.github.glodium.util.GlodUtil;
 import io.github.sapporo1101.appgen.api.AAESettings;
 import io.github.sapporo1101.appgen.common.AGSingletons;
+import io.github.sapporo1101.appgen.common.blockentities.interfaces.IEnergyExtractor;
 import io.github.sapporo1101.appgen.common.blocks.FluxGeneratorBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -46,18 +41,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.energy.IEnergyStorage;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity implements IGridTickable, IUpgradeableObject, IConfigurableObject {
-    public static final @NotNull AEKey FE_KEY = FluxKey.of(EnergyType.FE);
-
+public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity implements IGridTickable, IUpgradeableObject, IConfigurableObject, IEnergyExtractor {
     private final IUpgradeInventory upgrades;
     private final IConfigManager configManager;
     private final MachineSource source = new MachineSource(this);
@@ -80,7 +70,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         return EnumSet.complementOf(EnumSet.of(orientation.getSide(RelativeSide.TOP)));
     }
 
-    abstract int getBaseGeneratePerTick();
+    abstract long getBaseGeneratePerTick();
 
     @Override
     public void importSettings(SettingsFrom mode, DataComponentMap input, @Nullable Player player) {
@@ -186,8 +176,8 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
             if (this.pulse <= 0) return TickRateModulation.SLEEP;
             int ticks = Math.min(ticksSinceLastCall, this.pulse);
             this.pulse -= ticks;
-            int newFE = ticks * this.getGeneratePerTick();
-            final int sent = this.configManager.getSetting(AAESettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
+            long newFE = ticks * this.getGeneratePerTick();
+            final long sent = this.configManager.getSetting(AAESettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
             this.lastGeneratePerTick = (double) sent / ticks;
             if (this.pulse <= 0) {
                 this.updateBlockEntity(this.shouldUpdateIsOn());
@@ -196,8 +186,8 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
                 return sent > 0 ? TickRateModulation.FASTER : TickRateModulation.SLOWER;
             }
         } else {
-            int newFE = ticksSinceLastCall * this.getGeneratePerTick();
-            final int sent = this.configManager.getSetting(AAESettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
+            long newFE = ticksSinceLastCall * this.getGeneratePerTick();
+            final long sent = this.configManager.getSetting(AAESettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
             this.lastGeneratePerTick = (double) sent / ticksSinceLastCall;
             return sent > 0 ? TickRateModulation.FASTER : TickRateModulation.SLOWER;
         }
@@ -223,39 +213,20 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         });
     }
 
-    public int getGeneratePerTick() {
+    public long getGeneratePerTick() {
         if (this.upgrades == null) {
             return this.getBaseGeneratePerTick();
         }
         double upgradeMultiplier = 1 + this.upgrades.getInstalledUpgrades(AEItems.SPEED_CARD) * 0.5;
-        return (int) (this.getBaseGeneratePerTick() * upgradeMultiplier);
+        return (long) (this.getBaseGeneratePerTick() * upgradeMultiplier);
     }
 
-    public int sendFEToNetwork(int amount) {
-        if (this.getGridNode() == null) return 0;
-
-        IGrid grid = this.getGridNode().getGrid();
-        IStorageService storage = grid.getStorageService();
-
-        return Math.toIntExact(storage.getInventory().insert(FE_KEY, amount, Actionable.MODULATE, this.source));
+    public long sendFEToNetwork(long amount) {
+        return this.sendFEToNetwork(amount, this.getGridNode(), this.source);
     }
 
-    private int sendFEToAdjacentBlock(int amount) {
-        if (this.level == null) return 0;
-
-        int remaining = amount;
-        for (Direction dir : this.outputSides) {
-            if (remaining <= 0) break;
-            BlockPos targetPos = this.getBlockPos().relative(dir);
-            IEnergyStorage storage = this.level.getCapability(Capabilities.EnergyStorage.BLOCK, targetPos, dir.getOpposite());
-            if (storage != null && storage.canReceive()) {
-                int canInsert = storage.receiveEnergy(remaining, true);
-                if (canInsert <= 0) continue;
-                int inserted = storage.receiveEnergy(remaining, false);
-                remaining -= inserted;
-            }
-        }
-        return amount - remaining;
+    private long sendFEToAdjacentBlock(long amount) {
+        return this.sendFEToAdjacentBlock(amount, this.outputSides, this.getBlockPos(), this.level);
     }
 
     public void updateRedstoneState() {
@@ -306,7 +277,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 20;
         }
     }
@@ -318,7 +289,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 80;
         }
     }
@@ -330,7 +301,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 320;
         }
     }
@@ -342,7 +313,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 1_280;
         }
     }
@@ -354,7 +325,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 5_120;
         }
     }
@@ -366,7 +337,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 20_480;
         }
     }
@@ -378,7 +349,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 81_920;
         }
     }
@@ -390,7 +361,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 327_680;
         }
     }
@@ -402,7 +373,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 1_310_720;
         }
     }
@@ -414,7 +385,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         }
 
         @Override
-        int getBaseGeneratePerTick() {
+        long getBaseGeneratePerTick() {
             return 5_242_880;
         }
     }

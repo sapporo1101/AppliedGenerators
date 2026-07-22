@@ -26,6 +26,7 @@ import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.filter.AEItemFilters;
 import com.glodblock.github.glodium.util.GlodUtil;
 import io.github.sapporo1101.appgen.common.AGSingletons;
+import io.github.sapporo1101.appgen.common.blockentities.interfaces.IItemExtractor;
 import io.github.sapporo1101.appgen.common.blocks.SmelterBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -43,15 +44,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements RecipeCraftingHolder, IGridTickable, IUpgradeableObject, IConfigurableObject {
+public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements RecipeCraftingHolder, IGridTickable, IUpgradeableObject, IConfigurableObject, IItemExtractor {
 
     private static final int POWER_MAXIMUM_AMOUNT = 10_000;
     private static final int AE_PER_TICK = 20;
@@ -235,7 +234,7 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
         if (oldMaxProgress != this.maxProgress || oldProgress != this.progress || oldHasWork != this.hasWork) {
             this.saveChanges();
         }
-        if (this.pushOutResult()) return TickRateModulation.URGENT;
+        if (this.sendStack()) return TickRateModulation.URGENT;
         return canSmelt(level.registryAccess(), recipeholder, inputStack, outputStack, this) ? TickRateModulation.URGENT : (this.hasAutoExportWork() ? TickRateModulation.SLOWER : TickRateModulation.SLEEP);
     }
 
@@ -249,7 +248,7 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
         return recipeholder;
     }
 
-    private static boolean canSmelt(RegistryAccess registryAccess, @javax.annotation.Nullable RecipeHolder<?> recipe, ItemStack inputStack, ItemStack outputStack, SmelterBlockEntity smelter) {
+    private static boolean canSmelt(RegistryAccess registryAccess, @Nullable RecipeHolder<?> recipe, ItemStack inputStack, ItemStack outputStack, SmelterBlockEntity smelter) {
         if (!inputStack.isEmpty() && recipe != null) {
             ItemStack resultStack = ((AbstractCookingRecipe) recipe.value()).assemble(new SingleRecipeInput(smelter.getInputInv().getStackInSlot(0)), registryAccess);
             if (resultStack.isEmpty()) {
@@ -268,7 +267,7 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
         }
     }
 
-    private static boolean smelt(RegistryAccess registryAccess, @javax.annotation.Nullable RecipeHolder<?> recipe, ItemStack inputStack, ItemStack outputStack, SmelterBlockEntity smelter) {
+    private static boolean smelt(RegistryAccess registryAccess, @Nullable RecipeHolder<?> recipe, ItemStack inputStack, ItemStack outputStack, SmelterBlockEntity smelter) {
         if (recipe != null && canSmelt(registryAccess, recipe, inputStack, outputStack, smelter)) {
             ItemStack resultStack = ((AbstractCookingRecipe) recipe.value()).assemble(new SingleRecipeInput(inputStack), registryAccess);
             int smeltingCount = smelter.isUpgradedWith(AGSingletons.STACK_SMELTING_CARD) ? getMaxSmeltingCount(inputStack, outputStack, resultStack) : 1;
@@ -450,32 +449,10 @@ public class SmelterBlockEntity extends AENetworkedPoweredBlockEntity implements
         this.onOutputSideChanged();
     }
 
-    private boolean pushOutResult() {
-        if (!this.hasAutoExportWork() || this.level == null) {
-            return false;
-        }
-
-        for (Direction dir : outputSides) {
-            BlockPos targetPos = this.getBlockPos().relative(dir);
-            IItemHandler itemStorage = this.level.getCapability(Capabilities.ItemHandler.BLOCK, targetPos, dir.getOpposite());
-
-            boolean movedStacks = false;
-            if (itemStorage != null) {
-                if (this.outputInv.getStackInSlot(0) != null && !this.outputInv.getStackInSlot(0).isEmpty()) {
-                    ItemStack remainingStack = this.outputInv.extractItem(0, 64, false);
-                    for (int i = 0; i < itemStorage.getSlots(); i++) {
-                        if (remainingStack.getCount() <= 0) break;
-                        remainingStack = itemStorage.insertItem(i, remainingStack, false);
-                    }
-                    this.outputInv.insertItem(0, remainingStack, false);
-                    movedStacks = !remainingStack.isEmpty();
-                }
-            }
-
-            if (movedStacks) return true;
-
-        }
-        return false;
+    @Override
+    public boolean sendStack() {
+        if (!this.hasAutoExportWork()) return false;
+        return this.sendItem(this.outputInv, this.getOutputSides(), this.getBlockPos(), this.level);
     }
 
     @Override

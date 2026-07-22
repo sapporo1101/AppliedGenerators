@@ -7,7 +7,6 @@ import io.github.sapporo1101.appgen.common.blockentities.PatternBufferBlockEntit
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
-import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.item.BlockItem;
@@ -20,7 +19,8 @@ import org.jetbrains.annotations.NotNull;
 @OnlyIn(Dist.CLIENT)
 public class PatternBufferRenderer implements BlockEntityRenderer<PatternBufferBlockEntity> {
 
-    public PatternBufferRenderer(BlockEntityRendererProvider.Context context) {
+    public PatternBufferRenderer() {
+        // NO-OP
     }
 
     @Override
@@ -33,13 +33,14 @@ public class PatternBufferRenderer implements BlockEntityRenderer<PatternBufferB
             Minecraft minecraft = Minecraft.getInstance();
             ItemRenderer itemRenderer = minecraft.getItemRenderer();
             poseStack.pushPose();
-            poseStack.translate(0.5, 0.5, 0.5); // Translate to center of block
 
             if (!(stack.getItem() instanceof BlockItem)) {
-                poseStack.translate(0, -0.15, 0);
+                poseStack.translate(0.5, 0.3, 0.5);
             } else {
-                poseStack.translate(0, -0.2, 0);
+                poseStack.translate(0.5, 0.22, 0.5);
             }
+
+            poseStack.scale(1.5F, 1.5F, 1.5F);
 
             itemRenderer.renderStatic(stack, ItemDisplayContext.GROUND, combinedLightIn,
                     OverlayTexture.NO_OVERLAY, poseStack, multiBufferSource, patternBuffer.getLevel(), 0);
