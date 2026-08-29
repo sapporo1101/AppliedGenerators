@@ -27,14 +27,14 @@ public class GenesisSynthesizerRecipeSerializer {
                     ItemStackTemplate.CODEC.optionalFieldOf("item_output").forGetter((ir) -> Optional.ofNullable(ir.itemOutput)),
                     FluidStackTemplate.CODEC.optionalFieldOf("fluid_output").forGetter((ir) -> Optional.ofNullable(ir.fluidOutput)),
                     IngredientStack.ITEM_CODEC.listOf().fieldOf("item_inputs").forGetter((ir) -> ir.itemInputs),
-                    IngredientStack.FLUID_CODEC.fieldOf("fluid_input").forGetter((ir) -> ir.fluid),
+                    IngredientStack.FLUID_CODEC.optionalFieldOf("fluid_input").forGetter((ir) -> Optional.ofNullable(ir.fluid)),
                     Codec.LONG.fieldOf("energy_input").forGetter((ir) -> ir.energy))
             .apply(builder, (itemOutput, fluidOutput, itemInputs, fluidInput, energy) ->
                     new GenesisSynthesizerRecipe(
                             itemOutput.orElse(null),
                             fluidOutput.orElse(null),
                             itemInputs,
-                            fluidInput,
+                            fluidInput.orElse(null),
                             energy
                     )));
 
@@ -48,7 +48,8 @@ public class GenesisSynthesizerRecipeSerializer {
                     (r) -> r.fluidOutput,
                     IngredientStack.ITEM_STREAM_CODEC.apply(ByteBufCodecs.list()),
                     (r) -> r.itemInputs,
-                    IngredientStack.FLUID_STREAM_CODEC,
+                    ByteBufCodecs.optional(IngredientStack.FLUID_STREAM_CODEC)
+                            .map(opt -> opt.orElse(null), Optional::ofNullable),
                     (r) -> r.fluid,
                     ByteBufCodecs.LONG,
                     (r) -> r.energy,
