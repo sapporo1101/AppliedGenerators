@@ -4,10 +4,9 @@
     "package": "io.github.sapporo1101.appgen.mixin",
     "compatibilityLevel": "JAVA_25",
     "refmap": "appgen.refmap.json",
-    "mixins": [
-        "ItemEntityMixin"
-    ],
+    "mixins": ["GenericStackInvHandlerMixin", "ItemEntityMixin"],
     "client": [
+        "AbstractContainerScreenMixin"
     ],
     "injectors": {
         "defaultRequire": 1
