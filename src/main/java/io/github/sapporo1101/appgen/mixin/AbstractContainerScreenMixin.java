@@ -1,5 +1,6 @@
 package io.github.sapporo1101.appgen.mixin;
 
+import appeng.api.stacks.GenericStack;
 import io.github.sapporo1101.appgen.client.gui.PatternBufferScreen;
 import io.github.sapporo1101.appgen.menu.slots.PatternBufferInvSlot;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -35,7 +36,8 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
                     ItemStack storageItem = slot.getItem();
                     ItemStack carriedItem = this.getMenu().getCarried();
                     if (!storageItem.isEmpty() && !carriedItem.isEmpty()) {
-                        if (!ItemStack.isSameItemSameComponents(storageItem, carriedItem)) {
+                        boolean wrapped = GenericStack.isWrapped(storageItem) || GenericStack.isWrapped(carriedItem);
+                        if (!wrapped && !ItemStack.isSameItemSameComponents(storageItem, carriedItem)) {
                             ci.cancel();
                             return;
                         }

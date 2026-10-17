@@ -14,6 +14,7 @@ import io.github.sapporo1101.appgen.AppliedGenerators;
 import io.github.sapporo1101.appgen.api.AGSettings;
 import io.github.sapporo1101.appgen.api.KeepSignalMode;
 import io.github.sapporo1101.appgen.common.blockentities.PatternBufferBlockEntity;
+import io.github.sapporo1101.appgen.menu.inventory.PatternBufferMenuInventory;
 import io.github.sapporo1101.appgen.menu.slots.PatternBufferInvSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.MenuType;
@@ -34,7 +35,7 @@ public class PatternBufferMenu extends UpgradeableMenu<PatternBufferBlockEntity>
     public PatternBufferMenu(int id, Inventory playerInventory, PatternBufferBlockEntity host) {
         super(TYPE, id, playerInventory, host);
         for (int index = 0; index < host.getStorageInv().size(); index++) {
-            this.addSlot(new PatternBufferInvSlot(new ConfigMenuInventory(host.getStorageInv()), index, host.getPatternInput()), SlotSemantics.STORAGE);
+            this.addSlot(new PatternBufferInvSlot(new PatternBufferMenuInventory(host.getStorageInv()), index, host.getPatternInput()), SlotSemantics.STORAGE);
         }
         this.patternSlot = new RestrictedInputSlot(RestrictedInputSlot.PlacableItemType.PROVIDER_PATTERN, new ConfigMenuInventory(host.getPatternInv()), 0);
         this.addSlot(patternSlot, SlotSemantics.ENCODED_PATTERN);
@@ -70,10 +71,8 @@ public class PatternBufferMenu extends UpgradeableMenu<PatternBufferBlockEntity>
     }
 
     private AEKey getAEKeyFromSlot(Slot slot) {
-        if (slot instanceof AppEngSlot aeSlot) {
-            if (aeSlot.getInventory() instanceof ConfigMenuInventory inv) {
-                return inv.getDelegate().getKey(aeSlot.getSlotIndex());
-            }
+        if (slot instanceof AppEngSlot aeSlot && aeSlot.getInventory() instanceof PatternBufferMenuInventory inv) {
+            return inv.getDelegate().getKey(aeSlot.getSlotIndex());
         }
         return AEItemKey.of(slot.getItem());
     }

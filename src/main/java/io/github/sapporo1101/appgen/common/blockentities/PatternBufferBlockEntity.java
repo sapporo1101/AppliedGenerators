@@ -119,10 +119,10 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
     @Override
     public void loadTag(ValueInput input) {
         super.loadTag(input);
+        this.patternInput.readFromChildTag(input, "pattern");
         this.storageInv.readFromChildTag(input, "buffer");
         this.patternInv.readFromChildTag(input, "pattern_inv");
         this.upgrades.readFromNBT(input, "upgrades");
-        this.patternInput.readFromChildTag(input, "pattern");
     }
 
     @Override
@@ -274,7 +274,7 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         @Override
         public long getMaxAmount(AEKey key) {
             long recipeCapacity = keyCapacity(key, PatternBufferBlockEntity.this.patternInput);
-            return recipeCapacity > 0 ? recipeCapacity : getCapacity(key.getType());
+            return recipeCapacity > 0 ? recipeCapacity : Long.MAX_VALUE;
         }
 
         @Override
