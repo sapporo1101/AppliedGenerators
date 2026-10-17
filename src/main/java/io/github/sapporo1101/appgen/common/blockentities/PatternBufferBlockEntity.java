@@ -205,6 +205,20 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         return Math.clamp(capacity - currentAmount, 0, amount); // return the amount that can be inserted
     }
 
+    private static long keyCapacity(AEKey key, PatternInput patternInput) {
+        if (key == null) return 0;
+        List<List<GenericStack>> inputs = patternInput.getInputs();
+        long capacity = 0;
+        for (List<GenericStack> input : inputs) {
+            for (GenericStack stack : input) {
+                if (key.matches(stack)) {
+                    capacity += stack.amount();
+                }
+            }
+        }
+        return capacity;
+    }
+
     public PatternBufferInv getStorageInv() {
         return storageInv;
     }
@@ -251,6 +265,11 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
 
         public PatternBufferBlockEntity getHost() {
             return PatternBufferBlockEntity.this;
+        }
+
+        @Override
+        public long getMaxAmount(AEKey key) {
+            return keyCapacity(key, PatternBufferBlockEntity.this.patternInput);
         }
 
         @Override
