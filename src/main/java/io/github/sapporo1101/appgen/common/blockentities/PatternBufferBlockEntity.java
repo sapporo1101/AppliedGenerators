@@ -72,12 +72,14 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         this.updatePattern();
         this.updateRedstoneState();
         this.saveChanges();
+        this.markForClientUpdate();
     }
 
     private void onUpgradeChanged() {
         if (this.level == null || this.level.isClientSide()) return;
         this.updateRedstoneState();
         this.saveChanges();
+        this.markForClientUpdate();
     }
 
     @Override
@@ -147,7 +149,9 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
 
             if (patternDetails == null) break setPattern;
             for (IPatternDetails.IInput input : patternDetails.getInputs()) {
-                List<GenericStack> inputStack = Arrays.stream(input.getPossibleInputs()).map(s -> new GenericStack(s.what(), s.amount() * input.getMultiplier())).toList();
+                List<GenericStack> inputStack = new ArrayList<>(Arrays.stream(input.getPossibleInputs())
+                        .map(s -> new GenericStack(s.what(), s.amount() * input.getMultiplier()))
+                        .toList());
                 newInputs.add(inputStack);
             }
         }
@@ -269,7 +273,8 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
 
         @Override
         public long getMaxAmount(AEKey key) {
-            return keyCapacity(key, PatternBufferBlockEntity.this.patternInput);
+            long recipeCapacity = keyCapacity(key, PatternBufferBlockEntity.this.patternInput);
+            return recipeCapacity > 0 ? recipeCapacity : getCapacity(key.getType());
         }
 
         @Override
@@ -318,7 +323,7 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         }
 
         public void setInputs(List<List<GenericStack>> inputs) {
-            this.inputs = inputs.subList(0, Math.min(inputs.size(), 36));
+            this.inputs = new ArrayList<>(inputs.subList(0, Math.min(inputs.size(), 36)));
         }
 
         public List<List<GenericStack>> getInputs() {
@@ -365,10 +370,14 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         }
 
         private void readFromTag(ValueInput.ValueInputList input, int index) {
-            this.inputs.add(new ArrayList<>());
+            while (this.inputs.size() <= index) {
+                this.inputs.add(new ArrayList<>());
+            }
+            List<GenericStack> target = this.inputs.get(index);
+            target.clear();
             for (ValueInput inputElement : input) {
                 GenericStack stack = GenericStack.readTag(inputElement);
-                this.inputs.get(index).add(stack);
+                target.add(stack);
             }
         }
     }
