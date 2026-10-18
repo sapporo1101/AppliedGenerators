@@ -8,6 +8,7 @@
         "ItemEntityMixin"
     ],
     "client": [
+        "AbstractContainerScreenMixin"
     ],
     "injectors": {
         "defaultRequire": 1

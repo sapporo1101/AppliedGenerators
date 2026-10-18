@@ -101,7 +101,9 @@ public class GenesisSynthesizerRecipe implements Recipe<RecipeInput> {
             }
         }
 
-        validInputs.add(this.fluidInput.sample());
+        if (this.fluidInput != null && !this.fluidInput.isEmpty()) {
+            validInputs.add(this.fluidInput.sample());
+        }
         return validInputs;
     }
 

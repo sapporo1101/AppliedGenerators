@@ -2,8 +2,8 @@ package io.github.sapporo1101.appgen.client.gui;
 
 import appeng.client.gui.AEBaseScreen;
 import appeng.client.gui.style.ScreenStyle;
+import io.github.sapporo1101.appgen.client.button.AGIcon;
 import io.github.sapporo1101.appgen.client.button.ActionEPPButton;
-import io.github.sapporo1101.appgen.client.button.EAEIcon;
 import io.github.sapporo1101.appgen.client.gui.subgui.OutputSideConfig;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.menu.FluxCellMenu;
@@ -17,7 +17,7 @@ public class FluxCellScreen extends AEBaseScreen<FluxCellMenu> {
 
     public FluxCellScreen(FluxCellMenu menu, Inventory playerInventory, Component title, ScreenStyle style) {
         super(menu, playerInventory, title, style);
-        ActionEPPButton outputSideBtn = new ActionEPPButton(b -> this.openOutputConfig(), EAEIcon.OUTPUT_SIDES);
+        ActionEPPButton outputSideBtn = new ActionEPPButton(b -> this.openOutputConfig(), AGIcon.OUTPUT_SIDES.getBlitter());
         outputSideBtn.setMessage(Component.translatable("gui.appgen.set_output_sides.open"));
         this.addToLeftToolbar(outputSideBtn);
     }

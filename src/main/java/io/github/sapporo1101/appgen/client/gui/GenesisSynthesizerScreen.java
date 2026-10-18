@@ -8,8 +8,8 @@ import appeng.client.gui.widgets.ProgressBar;
 import appeng.client.gui.widgets.ServerSettingToggleButton;
 import appeng.client.gui.widgets.SettingToggleButton;
 import appeng.core.localization.Tooltips;
+import io.github.sapporo1101.appgen.client.button.AGIcon;
 import io.github.sapporo1101.appgen.client.button.ActionEPPButton;
-import io.github.sapporo1101.appgen.client.button.EAEIcon;
 import io.github.sapporo1101.appgen.client.gui.subgui.OutputSideConfig;
 import io.github.sapporo1101.appgen.client.gui.widget.AlertWidget;
 import io.github.sapporo1101.appgen.client.gui.widget.SubProgressBar;
@@ -38,7 +38,7 @@ public class GenesisSynthesizerScreen extends UpgradeableScreen<GenesisSynthesiz
         widgets.add("crystalBar", this.crystalBar);
         this.autoExportBtn = new ServerSettingToggleButton<>(Settings.AUTO_EXPORT, YesNo.NO);
         this.addToLeftToolbar(autoExportBtn);
-        this.outputSideBtn = new ActionEPPButton(b -> this.openOutputConfig(), EAEIcon.OUTPUT_SIDES);
+        this.outputSideBtn = new ActionEPPButton(b -> this.openOutputConfig(), AGIcon.OUTPUT_SIDES.getBlitter());
         this.outputSideBtn.setMessage(Component.translatable("gui.appgen.set_output_sides.open"));
         this.addToLeftToolbar(this.outputSideBtn);
         this.powerAlert = new AlertWidget(style.getImage("powerAlert"));

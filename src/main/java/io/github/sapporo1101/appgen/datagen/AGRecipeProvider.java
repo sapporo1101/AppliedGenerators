@@ -12,6 +12,7 @@ import appeng.recipes.handlers.InscriberRecipeBuilder;
 import appeng.recipes.transform.TransformCircumstance;
 import appeng.recipes.transform.TransformRecipeBuilder;
 import com.glodblock.github.appflux.common.AFSingletons;
+import com.glodblock.github.extendedae.common.EAESingletons;
 import com.glodblock.github.extendedae.recipe.CircuitCutterRecipeBuilder;
 import com.glodblock.github.extendedae.recipe.CrystalAssemblerRecipeBuilder;
 import com.glodblock.github.extendedae.recipe.CrystalFixerRecipeBuilder;
@@ -661,13 +662,13 @@ public class AGRecipeProvider extends RecipeProvider {
         // Insulating Resin
         GenesisSynthesizerRecipeBuilder.synthesize(AFSingletons.INSULATING_RESIN, 1, 10000)
                 .input(AGSingletons.EMBER_CRYSTAL_CHARGED, 1)
-                .input(AEItems.SKY_DUST)
-                .input(AEItems.SILICON)
                 .input(Items.SLIME_BALL)
+                .input(AEItems.SILICON)
+                .input(AEItems.SKY_DUST)
                 .fluid(Fluids.WATER, 100)
                 .save(recipeOutput, AppliedGenerators.id("synthesizer/insulating_resin"));
         // Insulating Resin (Duplicate)
-        GenesisSynthesizerRecipeBuilder.synthesize(AFSingletons.INSULATING_RESIN, 64, 1000000)
+        GenesisSynthesizerRecipeBuilder.synthesize(AFSingletons.INSULATING_RESIN, 64, 800000)
                 .input(AGSingletons.EMBER_CRYSTAL_CHARGED, 4)
                 .input(AFSingletons.INSULATING_RESIN, 32)
                 .input(AEItems.SILICON, 32)
@@ -675,14 +676,14 @@ public class AGRecipeProvider extends RecipeProvider {
                 .fluid(Fluids.WATER, 10000)
                 .save(recipeOutput, AppliedGenerators.id("synthesizer/insulating_resin_duplicate"));
         // Fluix ME Covered Cable
-        GenesisSynthesizerRecipeBuilder.synthesize(AEParts.COVERED_CABLE.item(AEColor.TRANSPARENT), 16, 10000)
+        GenesisSynthesizerRecipeBuilder.synthesize(AEParts.COVERED_CABLE.item(AEColor.TRANSPARENT), 16, 8000)
                 .input(AGSingletons.EMBER_CRYSTAL_CHARGED, 1)
                 .input(AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT), 16)
                 .input(AEItems.SILICON, 8)
                 .fluid(Fluids.WATER, 200)
                 .save(recipeOutput, AppliedGenerators.id("synthesizer/covered_cable"));
         // Fluix ME Smart Cable
-        GenesisSynthesizerRecipeBuilder.synthesize(AEParts.SMART_CABLE.item(AEColor.TRANSPARENT), 16, 10000)
+        GenesisSynthesizerRecipeBuilder.synthesize(AEParts.SMART_CABLE.item(AEColor.TRANSPARENT), 16, 8000)
                 .input(AGSingletons.EMBER_CRYSTAL_CHARGED, 1)
                 .input(AEParts.COVERED_CABLE.item(AEColor.TRANSPARENT), 16)
                 .input(AEItems.CERTUS_QUARTZ_CRYSTAL_CHARGED, 8)
@@ -702,7 +703,7 @@ public class AGRecipeProvider extends RecipeProvider {
                 .input(Items.NETHERITE_BLOCK)
                 .fluid(Fluids.LAVA, 5000)
                 .save(recipeOutput, AppliedGenerators.id("synthesizer/stack_smelting_card"));
-        // Singularity
+        // Singularity (From Reaction Chamber)
         GenesisSynthesizerRecipeBuilder.synthesize(AEItems.SINGULARITY, 1, 1000000)
                 .input(AEItems.MATTER_BALL, 64)
                 .fluid(Fluids.LAVA, 100)
@@ -714,12 +715,66 @@ public class AGRecipeProvider extends RecipeProvider {
                 .fluid(Fluids.LAVA, 1000)
                 .save(recipeOutput, AppliedGenerators.id("synthesizer/singularity_duplicate"));
         // Lava
-        GenesisSynthesizerRecipeBuilder.synthesize(Fluids.LAVA, 1000, 100000)
+        GenesisSynthesizerRecipeBuilder.synthesize(Fluids.LAVA, 1000, 8000)
                 .input(AGSingletons.EMBER_CRYSTAL_CHARGED, 4)
                 .input(AGSingletons.EMBER_DUST, 4)
-                .input(AEItems.FLUIX_DUST, 4)
-                .fluid(Fluids.WATER, 1000)
+                .input(Items.STONE, 1)
                 .save(recipeOutput, AppliedGenerators.id("synthesizer/lava"));
+        // Charged Certus Quartz Crystal (From Reaction Chamber)
+        GenesisSynthesizerRecipeBuilder.synthesize(AEItems.CERTUS_QUARTZ_CRYSTAL_CHARGED, 64, 1300000)
+                .input(AEItems.CERTUS_QUARTZ_CRYSTAL, 64)
+                .fluid(Fluids.WATER, 1000)
+                .save(recipeOutput, AppliedGenerators.id("synthesizer/charged_certus_quartz_crystal"));
+        // Certus Quartz Crystal (Duplicate) (From Reaction Chamber)
+        GenesisSynthesizerRecipeBuilder.synthesize(AEItems.CERTUS_QUARTZ_CRYSTAL, 64, 50000)
+                .input(AEItems.CERTUS_QUARTZ_CRYSTAL_CHARGED, 16)
+                .input(AEItems.CERTUS_QUARTZ_DUST, 16)
+                .fluid(Fluids.WATER, 500)
+                .save(recipeOutput, AppliedGenerators.id("synthesizer/certus_quartz_crystal_duplicate"));
+        // Fluix Crystal (From Reaction Chamber)
+        GenesisSynthesizerRecipeBuilder.synthesize(AEItems.FLUIX_CRYSTAL, 64, 200000)
+                .input(AEItems.CERTUS_QUARTZ_CRYSTAL_CHARGED, 16)
+                .input(Items.REDSTONE, 16)
+                .input(Items.QUARTZ, 16)
+                .fluid(Fluids.WATER, 500)
+                .save(recipeOutput, AppliedGenerators.id("synthesizer/fluix_crystal"));
+        // Fluix Crystal (Duplicate) (From Reaction Chamber)
+        GenesisSynthesizerRecipeBuilder.synthesize(AEItems.FLUIX_CRYSTAL, 64, 100000)
+                .input(AEItems.CERTUS_QUARTZ_CRYSTAL_CHARGED, 32)
+                .input(AEItems.FLUIX_DUST, 32)
+                .fluid(Fluids.WATER, 500)
+                .save(recipeOutput, AppliedGenerators.id("synthesizer/fluix_crystal_duplicate"));
+        // Ember Crystal
+        GenesisSynthesizerRecipeBuilder.synthesize(AGSingletons.EMBER_CRYSTAL, 64, 200000)
+                .input(AEItems.FLUIX_CRYSTAL, 16)
+                .input(Items.GUNPOWDER, 16)
+                .input(Items.BLAZE_POWDER, 16)
+                .fluid(Fluids.LAVA, 500)
+                .save(recipeOutput, AppliedGenerators.id("synthesizer/ember_crystal"));
+        // Ember Crystal (Duplicate)
+        GenesisSynthesizerRecipeBuilder.synthesize(AGSingletons.EMBER_CRYSTAL, 64, 1000000)
+                .input(AEItems.FLUIX_CRYSTAL, 32)
+                .input(AGSingletons.EMBER_DUST, 32)
+                .fluid(Fluids.LAVA, 500)
+                .save(recipeOutput, AppliedGenerators.id("synthesizer/ember_crystal_duplicate"));
+        // Charged Ember Crystal
+        GenesisSynthesizerRecipeBuilder.synthesize(AGSingletons.EMBER_CRYSTAL_CHARGED, 64, 1300000)
+                .input(AGSingletons.EMBER_CRYSTAL, 64)
+                .fluid(Fluids.LAVA, 1000)
+                .save(recipeOutput, AppliedGenerators.id("synthesizer/charged_ember_crystal"));
+        // Entro Crystal (Duplicate) (From Reaction Chamber)
+        GenesisSynthesizerRecipeBuilder.synthesize(EAESingletons.ENTRO_CRYSTAL, 64, 100000)
+                .input(EAESingletons.ENTRO_DUST, 32)
+                .input(AEItems.FLUIX_CRYSTAL, 32)
+                .fluid(Fluids.WATER, 500)
+                .save(recipeOutput, AppliedGenerators.id("synthesizer/entro_crystal"));
+        // Entro Infused Ingot (From Reaction Chamber)
+        GenesisSynthesizerRecipeBuilder.synthesize(EAESingletons.ENTRO_INGOT, 64, 500000)
+                .input(EAESingletons.ENTRO_CRYSTAL, 32)
+                .input(Items.GOLD_INGOT, 32)
+                .input(Items.LAPIS_LAZULI, 32)
+                .fluid(Fluids.WATER, 500)
+                .save(recipeOutput, AppliedGenerators.id("synthesizer/entro_infused_ingot"));
 
 
         // World Transformation Recipes

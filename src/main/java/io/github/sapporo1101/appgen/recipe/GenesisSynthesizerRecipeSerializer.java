@@ -11,6 +11,8 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Optional;
+
 public class GenesisSynthesizerRecipeSerializer implements RecipeSerializer<GenesisSynthesizerRecipe> {
 
     public static final GenesisSynthesizerRecipeSerializer INSTANCE = new GenesisSynthesizerRecipeSerializer();
@@ -22,16 +24,18 @@ public class GenesisSynthesizerRecipeSerializer implements RecipeSerializer<Gene
     public static final MapCodec<GenesisSynthesizerRecipe> CODEC = RecordCodecBuilder.mapCodec((builder) -> builder.group(
                     GenericStack.CODEC.fieldOf("output").forGetter((ir) -> ir.output),
                     IngredientStack.ITEM_CODEC.listOf().fieldOf("item_inputs").forGetter((ir) -> ir.itemInputs),
-                    IngredientStack.FLUID_CODEC.fieldOf("fluid_input").forGetter((ir) -> ir.fluidInput),
+                    IngredientStack.FLUID_CODEC.optionalFieldOf("fluid_input").forGetter((ir) -> Optional.ofNullable(ir.fluidInput)),
                     Codec.LONG.fieldOf("energy_input").forGetter((ir) -> ir.energy))
-            .apply(builder, GenesisSynthesizerRecipe::new));
+            .apply(builder, (output, itemInputs, fluidInput, energy) ->
+                    new GenesisSynthesizerRecipe(output, itemInputs, fluidInput.orElse(null), energy)));
     public static final StreamCodec<RegistryFriendlyByteBuf, GenesisSynthesizerRecipe> STREAM_CODEC =
             StreamCodec.composite(
                     GenericStack.STREAM_CODEC,
                     (r) -> r.output,
                     IngredientStack.ITEM_STREAM_CODEC.apply(ByteBufCodecs.list()),
                     (r) -> r.itemInputs,
-                    IngredientStack.FLUID_STREAM_CODEC,
+                    ByteBufCodecs.optional(IngredientStack.FLUID_STREAM_CODEC)
+                            .map(opt -> opt.orElse(null), Optional::ofNullable),
                     (r) -> r.fluidInput,
                     ByteBufCodecs.VAR_LONG,
                     (r) -> r.energy,

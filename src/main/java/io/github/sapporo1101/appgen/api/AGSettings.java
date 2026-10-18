@@ -8,14 +8,16 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class AAESettings {
+public final class AGSettings {
     private static final Map<String, Setting<?>> SETTINGS = new HashMap<>();
     public static final Setting<YesNo> ME_EXPORT = register("me_export", YesNo.YES, YesNo.NO);
+    public static final Setting<KeepSignalMode> KEEP_SIGNAL = register("keep_signal", KeepSignalMode.class);
 
-    private AAESettings() {
+    private AGSettings() {
+        // NO-OP
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings("SameParameterValue")
     private static synchronized <T extends Enum<T>> Setting<T> register(String name, Class<T> enumClass) {
         Preconditions.checkState(!SETTINGS.containsKey(name));
         Setting<T> setting = new Setting<>(name, enumClass);

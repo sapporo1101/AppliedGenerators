@@ -26,7 +26,7 @@ import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.filter.AEItemDefinitionFilter;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.glodblock.github.glodium.util.GlodUtil;
-import io.github.sapporo1101.appgen.api.AAESettings;
+import io.github.sapporo1101.appgen.api.AGSettings;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.common.blockentities.interfaces.IEnergyExtractor;
 import io.github.sapporo1101.appgen.common.blocks.SingularityGeneratorBlock;
@@ -67,7 +67,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
         super(blockEntityType, pos, blockState);
         this.getMainNode().setIdlePowerUsage(0F).setFlags(GridFlags.REQUIRE_CHANNEL).addService(IGridTickable.class, this);
         this.upgrades = UpgradeInventories.forMachine(block, 4, this::upgradeSetChanged);
-        this.configManager = IConfigManager.builder(this::onConfigChanged).registerSetting(AAESettings.ME_EXPORT, YesNo.YES).build();
+        this.configManager = IConfigManager.builder(this::onConfigChanged).registerSetting(AGSettings.ME_EXPORT, YesNo.YES).build();
 
         this.generatableFE = 0;
     }
@@ -225,7 +225,7 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
             }
         } else {
             long newFE = Math.min((long) ticksSinceLastCall * this.getGeneratePerTick(), this.getGeneratableFE());
-            long sent = this.configManager.getSetting(AAESettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
+            long sent = this.configManager.getSetting(AGSettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
             this.lastGeneratePerTick = sent / (double) ticksSinceLastCall;
             return sent > 0 ? TickRateModulation.FASTER : TickRateModulation.SLOWER;
         }

@@ -9,7 +9,7 @@ import appeng.menu.implementations.UpgradeableMenu;
 import com.glodblock.github.glodium.network.packet.sync.ActionMap;
 import com.glodblock.github.glodium.network.packet.sync.IActionHolder;
 import io.github.sapporo1101.appgen.AppliedGenerators;
-import io.github.sapporo1101.appgen.api.AAESettings;
+import io.github.sapporo1101.appgen.api.AGSettings;
 import io.github.sapporo1101.appgen.common.blockentities.FluxGeneratorBlockEntity;
 import io.github.sapporo1101.appgen.menu.helper.DirectionSet;
 import net.minecraft.core.Direction;
@@ -56,7 +56,7 @@ public class FluxGeneratorMenu extends UpgradeableMenu<FluxGeneratorBlockEntity>
 
     @Override
     protected void loadSettingsFromHost(IConfigManager cm) {
-        this.meExport = this.getHost().getConfigManager().getSetting(AAESettings.ME_EXPORT);
+        this.meExport = this.getHost().getConfigManager().getSetting(AGSettings.ME_EXPORT);
         this.setRedStoneMode(this.getHost().getConfigManager().getSetting(Settings.REDSTONE_CONTROLLED));
         this.outputSides.clear();
         this.outputSides.addAll(this.getHost().getOutputSides());

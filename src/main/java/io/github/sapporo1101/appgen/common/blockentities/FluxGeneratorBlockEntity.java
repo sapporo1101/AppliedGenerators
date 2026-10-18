@@ -24,7 +24,7 @@ import appeng.me.helpers.MachineSource;
 import appeng.util.Platform;
 import appeng.util.SettingsFrom;
 import com.glodblock.github.glodium.util.GlodUtil;
-import io.github.sapporo1101.appgen.api.AAESettings;
+import io.github.sapporo1101.appgen.api.AGSettings;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.common.blockentities.interfaces.IEnergyExtractor;
 import io.github.sapporo1101.appgen.common.blocks.FluxGeneratorBlock;
@@ -62,7 +62,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
         super(blockEntityType, pos, blockState);
         this.getMainNode().setIdlePowerUsage(0F).setFlags(GridFlags.REQUIRE_CHANNEL).addService(IGridTickable.class, this);
         this.upgrades = UpgradeInventories.forMachine(block, 4, this::onUpgradeChanged);
-        this.configManager = IConfigManager.builder(this::onConfigChanged).registerSetting(AAESettings.ME_EXPORT, YesNo.YES).registerSetting(Settings.REDSTONE_CONTROLLED, RedstoneMode.IGNORE).build();
+        this.configManager = IConfigManager.builder(this::onConfigChanged).registerSetting(AGSettings.ME_EXPORT, YesNo.YES).registerSetting(Settings.REDSTONE_CONTROLLED, RedstoneMode.IGNORE).build();
     }
 
     @Override
@@ -177,7 +177,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
             int ticks = Math.min(ticksSinceLastCall, this.pulse);
             this.pulse -= ticks;
             long newFE = ticks * this.getGeneratePerTick();
-            final long sent = this.configManager.getSetting(AAESettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
+            final long sent = this.configManager.getSetting(AGSettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
             this.lastGeneratePerTick = (double) sent / ticks;
             if (this.pulse <= 0) {
                 this.updateBlockEntity(this.shouldUpdateIsOn());
@@ -187,7 +187,7 @@ public abstract class FluxGeneratorBlockEntity extends AENetworkedBlockEntity im
             }
         } else {
             long newFE = ticksSinceLastCall * this.getGeneratePerTick();
-            final long sent = this.configManager.getSetting(AAESettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
+            final long sent = this.configManager.getSetting(AGSettings.ME_EXPORT) == YesNo.YES ? this.sendFEToNetwork(newFE) : this.sendFEToAdjacentBlock(newFE);
             this.lastGeneratePerTick = (double) sent / ticksSinceLastCall;
             return sent > 0 ? TickRateModulation.FASTER : TickRateModulation.SLOWER;
         }

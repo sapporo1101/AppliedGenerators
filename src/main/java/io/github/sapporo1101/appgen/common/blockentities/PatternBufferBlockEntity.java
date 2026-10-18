@@ -12,6 +12,8 @@ import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.api.upgrades.MachineUpgradesChanged;
 import appeng.api.upgrades.Upgrades;
+import appeng.api.util.IConfigManager;
+import appeng.api.util.IConfigurableObject;
 import appeng.blockentity.AEBaseBlockEntity;
 import appeng.core.definitions.AEItems;
 import appeng.helpers.externalstorage.GenericStackInv;
@@ -20,6 +22,8 @@ import appeng.util.inv.InternalInventoryHost;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.glodblock.github.appflux.common.AFSingletons;
 import com.glodblock.github.glodium.util.GlodUtil;
+import io.github.sapporo1101.appgen.api.AGSettings;
+import io.github.sapporo1101.appgen.api.KeepSignalMode;
 import io.github.sapporo1101.appgen.common.AGSingletons;
 import io.github.sapporo1101.appgen.xmod.ExternalTypes;
 import it.unimi.dsi.fastutil.objects.Reference2IntArrayMap;
@@ -40,16 +44,19 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import static io.github.sapporo1101.appgen.common.blocks.PatternBufferBlock.POWERED;
 
-public class PatternBufferBlockEntity extends AEBaseBlockEntity implements InternalInventoryHost, IUpgradeableObject {
+public class PatternBufferBlockEntity extends AEBaseBlockEntity implements InternalInventoryHost, IUpgradeableObject, IConfigurableObject {
 
     private final PatternBufferInv storageInv = new PatternBufferInv(this::onStorageChanged, 36);
     private final AppEngInternalInventory patternInv = new AppEngInternalInventory(this, 1);
     private final IUpgradeInventory upgrades = new PatternBufferUpgradeInventory(AGSingletons.PATTERN_BUFFER, 5, this::onUpgradeChanged);
-
+    private final IConfigManager configManager = IConfigManager.builder(this::onConfigChanged).registerSetting(AGSettings.KEEP_SIGNAL, KeepSignalMode.OFF).build();
     private final PatternInput patternInput = new PatternInput();
+
+    private boolean lastSatisfied = false;
 
     public PatternBufferBlockEntity(BlockPos pos, BlockState blockState) {
         super(GlodUtil.getTileType(PatternBufferBlockEntity.class, PatternBufferBlockEntity::new, AGSingletons.PATTERN_BUFFER), pos, blockState);
@@ -66,6 +73,7 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         if (this.level == null || this.level.isClientSide()) return;
         this.updateRedstoneState();
         this.saveChanges();
+        this.markForClientUpdate();
     }
 
     @Override
@@ -74,6 +82,7 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         this.updateCapacity();
         this.updateRedstoneState();
         this.saveChanges();
+        this.markForClientUpdate();
     }
 
     @Override
@@ -112,10 +121,7 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
     @Override
     public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
         super.loadTag(data, registries);
-        for (int i = 0; i < this.storageInv.size(); i++) {
-            GenericStackInv inv = this.storageInv.getInv(i);
-            inv.readFromChildTag(data, "buffer_" + i, registries);
-        }
+        this.patternInput.readFromChildTag(data, "pattern", registries);
         InternalInventory pattern = this.getPatternInv();
         if (pattern != InternalInventory.empty()) {
             CompoundTag opt = data.getCompound("inv");
@@ -123,8 +129,11 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
             pattern.setItemDirect(0, ItemStack.parseOptional(registries, item));
         }
         this.upgrades.readFromNBT(data, "upgrades", registries);
-        this.patternInput.readFromChildTag(data, "pattern", registries);
-        this.updateCapacity(); // update capacity after loading
+        this.updateCapacity(); // capacities must be known before restoring the contents they clamp
+        for (int i = 0; i < this.storageInv.size(); i++) {
+            GenericStackInv inv = this.storageInv.getInv(i);
+            inv.readFromChildTag(data, "buffer_" + i, registries);
+        }
     }
 
     @Override
@@ -183,13 +192,73 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         }
     }
 
+    private void onConfigChanged() {
+        this.lastSatisfied = false;
+        this.updateRedstoneState();
+        this.saveChanges();
+    }
+
     private void updateRedstoneState() {
+        this.updateLastSatisfied();
+        boolean keepSignal = this.configManager.getSetting(AGSettings.KEEP_SIGNAL) != KeepSignalMode.OFF;
         boolean powered = this.getBlockState().getValue(POWERED);
-        boolean newPowered = this.upgrades.isInstalled(AEItems.REDSTONE_CARD) && this.patternInput.isRecipeSatisfied();
+        boolean newPowered = this.upgrades.isInstalled(AEItems.REDSTONE_CARD)
+                && (!keepSignal && this.patternInput.isRecipeSatisfied() || keepSignal && this.lastSatisfied);
         if (this.level != null && powered != newPowered) {
             this.level.setBlockAndUpdate(this.getBlockPos(), this.level.getBlockState(this.getBlockPos()).setValue(POWERED, newPowered));
             this.level.updateNeighborsAt(this.getBlockPos(), this.getBlockState().getBlock());
         }
+    }
+
+    private void updateLastSatisfied() {
+        boolean storageEmpty = this.storageInv.invs.stream().allMatch(GenericStackInv::isEmpty);
+        boolean redstoneCardInstalled = this.upgrades.isInstalled(AEItems.REDSTONE_CARD);
+        if (storageEmpty || !redstoneCardInstalled) this.lastSatisfied = false;
+        boolean currentSatisfied = this.patternInput.isRecipeSatisfied();
+        if (currentSatisfied) this.lastSatisfied = true;
+    }
+
+    private boolean isStorageLocked() {
+        return this.configManager.getSetting(AGSettings.KEEP_SIGNAL) == KeepSignalMode.LOCKED && this.lastSatisfied;
+    }
+
+    private boolean isExtractionLocked() {
+        return this.configManager.getSetting(AGSettings.KEEP_SIGNAL) == KeepSignalMode.LOCKED && !this.lastSatisfied;
+    }
+
+    public boolean isPatternSlotLocked() {
+        return !this.storageInv.invs.stream().allMatch(GenericStackInv::isEmpty);
+    }
+
+    public static long canInsert(int slot, AEKey key, long amount, PatternInput patternInput, int currentAmount) {
+        if (key == null) return 0;
+        if (slot < 0 || slot >= patternInput.getInputs().size()) return 0;
+        List<GenericStack> inputs = patternInput.getInputs().get(slot);
+        long capacity = 0;
+        for (GenericStack input : inputs) {
+            if (key.matches(input)) {
+                capacity += input.amount();
+            }
+        }
+        return Math.clamp(capacity - currentAmount, 0, amount); // return the amount that can be inserted
+    }
+
+    private static long keyCapacity(AEKey key, PatternInput patternInput) {
+        if (key == null) return 0;
+        List<List<GenericStack>> inputs = patternInput.getInputs();
+        long capacity = 0;
+        for (List<GenericStack> input : inputs) {
+            for (GenericStack stack : input) {
+                if (key.matches(stack)) {
+                    capacity += stack.amount();
+                }
+            }
+        }
+        return capacity;
+    }
+
+    public PatternInput getPatternInput() {
+        return patternInput;
     }
 
     public PatternBufferInv getStorageInv() {
@@ -216,6 +285,11 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         IPatternDetails patternDetails = PatternDetailsHelper.decodePattern(patternStack, this.level);
         if (patternDetails == null || patternDetails.getOutputs().isEmpty()) return null;
         return patternDetails.getPrimaryOutput().what();
+    }
+
+    @Override
+    public IConfigManager getConfigManager() {
+        return this.configManager;
     }
 
     @SuppressWarnings("UnstableApiUsage")
@@ -252,12 +326,8 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
 
         @Override
         public long getMaxAmount(AEKey aeKey) {
-            return (long) Math.ceil((double) this.invs.stream().mapToLong(inv -> inv.getCapacity(aeKey.getType()) * this.isValidKey(inv, aeKey)).sum() / this.invs.size());
-        }
-
-        private int isValidKey(GenericStackInv inv, AEKey aeKey) {
-            int i = this.invs.indexOf(inv);
-            return PatternBufferBlockEntity.this.isValidKey(i, aeKey) ? 1 : 0;
+            long recipeCapacity = keyCapacity(aeKey, PatternBufferBlockEntity.this.patternInput);
+            return recipeCapacity > 0 ? recipeCapacity : Long.MAX_VALUE;
         }
 
         private long getMaxCapacity(AEKeyType aeKeyType) {
@@ -275,7 +345,7 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
 
         @Override
         public long getCapacity(AEKeyType aeKeyType) {
-            return (long) Math.ceil((double) this.invs.stream().mapToLong(inv -> inv.getCapacity(aeKeyType)).sum() / this.invs.size());
+            return this.invs.stream().mapToLong(inv -> inv.getCapacity(aeKeyType)).max().orElse(0);
         }
 
         public void setCapacity(int slot, AEKeyType aeKeyType, long capacity) {
@@ -286,12 +356,12 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
 
         @Override
         public boolean canInsert() {
-            return true;
+            return !isStorageLocked();
         }
 
         @Override
         public boolean canExtract() {
-            return true;
+            return configManager.getSetting(AGSettings.KEEP_SIGNAL) != KeepSignalMode.LOCKED || lastSatisfied;
         }
 
         @Override
@@ -356,19 +426,40 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         }
 
         @Override
+        public boolean canInsert() {
+            if (isStorageLocked()) return false;
+            if (this.getAmount(0) > 0 && this.getKey(0) != null) {
+                AEKeyType type = Objects.requireNonNull(this.getKey(0)).getType();
+                if (this.getCapacity(type) <= this.getAmount(0)) return false;
+            }
+            return super.canInsert();
+        }
+
+        @Override
+        public boolean canExtract() {
+            return !isExtractionLocked();
+        }
+
+        @Override
         public boolean isAllowedIn(int slot, AEKey what) {
             return isValidKey(this.index, what);
         }
+
+        @Override
+        public long getMaxAmount(AEKey key) {
+            long recipeCapacity = keyCapacity(key, PatternBufferBlockEntity.this.patternInput);
+            return recipeCapacity > 0 ? recipeCapacity : Long.MAX_VALUE;
+        }
     }
 
-    private class PatternInput {
+    public class PatternInput {
         private List<List<GenericStack>> inputs = new ArrayList<>();
 
         public PatternInput() {
         }
 
         public void setInputs(List<List<GenericStack>> inputs) {
-            this.inputs = inputs.subList(0, Math.min(inputs.size(), 36));
+            this.inputs = new ArrayList<>(inputs.subList(0, Math.min(inputs.size(), 36)));
         }
 
         public List<List<GenericStack>> getInputs() {
@@ -432,7 +523,11 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         }
 
         private void readFromTag(ListTag tag, HolderLookup.Provider registries, int index) {
-            this.inputs.add(new ArrayList<>());
+            while (this.inputs.size() <= index) {
+                this.inputs.add(new ArrayList<>());
+            }
+            List<GenericStack> target = this.inputs.get(index);
+            target.clear();
             for (int i = 0; i < tag.size(); ++i) {
                 var stack = GenericStack.readTag(registries, tag.getCompound(i));
                 this.inputs.get(index).add(stack);
@@ -553,14 +648,6 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
 
     @Override
     public @NotNull CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        CompoundTag data = super.getUpdateTag(registries);
-        InternalInventory pattern = this.getPatternInv();
-        if (pattern != InternalInventory.empty()) {
-            final CompoundTag opt = new CompoundTag();
-            ItemStack patternStack = pattern.getStackInSlot(0);
-            opt.put("item", patternStack.saveOptional(registries));
-            data.put("inv", opt);
-        }
-        return data;
+        return this.saveWithoutMetadata(registries);
     }
 }
