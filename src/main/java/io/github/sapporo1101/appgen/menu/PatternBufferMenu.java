@@ -4,6 +4,7 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.util.IConfigManager;
 import appeng.menu.SlotSemantics;
+import appeng.menu.guisync.ClientActionKey;
 import appeng.menu.guisync.GuiSync;
 import appeng.menu.implementations.MenuTypeBuilder;
 import appeng.menu.implementations.UpgradeableMenu;
@@ -16,12 +17,19 @@ import io.github.sapporo1101.appgen.api.KeepSignalMode;
 import io.github.sapporo1101.appgen.common.blockentities.PatternBufferBlockEntity;
 import io.github.sapporo1101.appgen.menu.inventory.PatternBufferMenuInventory;
 import io.github.sapporo1101.appgen.menu.slots.PatternBufferInvSlot;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import org.jetbrains.annotations.NotNull;
 
 public class PatternBufferMenu extends UpgradeableMenu<PatternBufferBlockEntity> {
+
+
+    private static final ClientActionKey<Integer> ACTION_CLEAR =
+            new ClientActionKey<>("clearPatternBuffer");
+
+    public static final int CLEAR_ALL = -1;
 
     @GuiSync(2)
     public KeepSignalMode keepSignal = KeepSignalMode.OFF;
@@ -39,6 +47,29 @@ public class PatternBufferMenu extends UpgradeableMenu<PatternBufferBlockEntity>
         }
         this.patternSlot = new RestrictedInputSlot(RestrictedInputSlot.PlacableItemType.PROVIDER_PATTERN, new ConfigMenuInventory(host.getPatternInv()), 0);
         this.addSlot(patternSlot, SlotSemantics.ENCODED_PATTERN);
+
+        registerClientAction(ACTION_CLEAR, ByteBufCodecs.INT, this::onClearRequested);
+    }
+
+    public void requestClear(int slot) {
+        if (isClientSide()) {
+            sendClientAction(ACTION_CLEAR, slot);
+        }
+    }
+
+    private void onClearRequested(Integer slot) {
+        if (isClientSide() || slot == null) {
+            return;
+        }
+
+        var storageInv = this.getHost().getStorageInv();
+        if (slot < 0) {
+            storageInv.clear();
+        } else if (slot < storageInv.size()) {
+            storageInv.setStack(slot, null);
+        }
+
+        this.getHost().saveChanges();
     }
 
     @Override
