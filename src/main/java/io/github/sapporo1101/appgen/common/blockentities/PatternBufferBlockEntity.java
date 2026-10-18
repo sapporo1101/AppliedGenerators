@@ -278,6 +278,12 @@ public class PatternBufferBlockEntity extends AEBaseBlockEntity implements Inter
         }
 
         @Override
+        public boolean isAllowedIn(int slot, AEKey what) {
+            return super.isAllowedIn(slot, what)
+                    && PatternBufferBlockEntity.canInsert(slot, what, 1, PatternBufferBlockEntity.this.patternInput, 0) > 0;
+        }
+
+        @Override
         public long getCapacity(AEKeyType aeKeyType) {
             long baseCapacity = 0;
             if (aeKeyType == AEKeyType.items()) baseCapacity = 1024;
