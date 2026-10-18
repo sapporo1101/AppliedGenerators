@@ -1,5 +1,6 @@
 {
-   "block.appgen.flux_cell": "Энергохранилище FE",
+   "itemGroup.appgen": "Прикладные генераторы",
+    "block.appgen.flux_cell": "Энергохранилище FE",
     "block.appgen.dense_flux_cell": "Плотное энергохранилище FE",
     "block.appgen.creative_flux_cell": "Творческое энергохранилище FE",
     "block.appgen.pattern_buffer": "Буфер шаблонов",
@@ -79,6 +80,10 @@
     "gui.appgen.me_export": "МЭ экспорт",
     "gui.appgen.me_export.on": "Произведённые предметы будут отправляться в МЭ-систему.",
     "gui.appgen.me_export.off": "Произведённые предметы будут отправляться в соседние контейнеры.",
+    "gui.appgen.keep_signal": "Удержание сигнала",
+    "gui.appgen.keep_signal.on": "После выполнения рецепта сигнал удерживается, пока хранилище не опустеет.",
+    "gui.appgen.keep_signal.off": "Сигнал подаётся только пока рецепт выполняется.",
+    "gui.appgen.keep_signal.locked": "Помимо удержания сигнала, извлечение блокируется до выполнения рецепта, а вставка — после.",
     "gui.appgen.insufficient_power": "Недостаточно энергии",
     "gui.appgen.insufficient_power.details": "Не удаётся получить достаточно энергии для работы на полной скорости.",
     "gui.appgen.smelter": "Плавильня",
