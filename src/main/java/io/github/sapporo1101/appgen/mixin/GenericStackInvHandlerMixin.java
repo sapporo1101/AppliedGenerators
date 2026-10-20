@@ -29,14 +29,15 @@ public abstract class GenericStackInvHandlerMixin<V extends Resource> implements
 
     @ModifyVariable(method = "insert(ILnet/neoforged/neoforge/transfer/resource/Resource;ILnet/neoforged/neoforge/transfer/transaction/TransactionContext;)I", at = @At("STORE"), name = "inserted")
     private int onInsert(int inserted, @Local(name = "index", argsOnly = true) int index, @Local(name = "resource", argsOnly = true) V resource, @Local(name = "amount", argsOnly = true) int amount) {
-        int inserting = 0;
-        if (this.inv instanceof PatternBufferBlockEntity.PatternBufferInv storageInv) {
-            PatternBufferBlockEntity.PatternInput patternInput = storageInv.getPatternInput();
-            inserting = Math.toIntExact(PatternBufferBlockEntity.canInsert(index, conversion.getKey(resource), amount, patternInput, (int) storageInv.getAmount(index)));
-
-            PatternBufferBlockEntity be = storageInv.getHost();
-            if (be.isInsertionLocked()) inserting = 0;
+        if (!(this.inv instanceof PatternBufferBlockEntity.PatternBufferInv storageInv)) {
+            return inserted;
         }
+
+        PatternBufferBlockEntity.PatternInput patternInput = storageInv.getPatternInput();
+        int inserting = Math.toIntExact(PatternBufferBlockEntity.canInsert(index, conversion.getKey(resource), amount, patternInput, (int) storageInv.getAmount(index)));
+
+        PatternBufferBlockEntity be = storageInv.getHost();
+        if (be.isInsertionLocked()) inserting = 0;
         return Math.min(inserted, inserting);
     }
 
