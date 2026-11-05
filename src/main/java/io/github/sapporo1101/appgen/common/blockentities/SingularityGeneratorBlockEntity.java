@@ -297,7 +297,9 @@ public abstract class SingularityGeneratorBlockEntity extends AENetworkedInvBloc
     }
 
     private long sendFEToAdjacentBlock(long amount) {
-        return this.sendFEToAdjacentBlock(amount, this.outputSides, this.getBlockPos(), this.level);
+        long inserted = this.sendFEToAdjacentBlock(amount, this.outputSides, this.getBlockPos(), this.level);
+        this.setGeneratableFE(Math.max(0, this.getGeneratableFE() - inserted));
+        return inserted;
     }
 
     public double getLastGeneratePerTick() {
